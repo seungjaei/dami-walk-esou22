@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2b2233">
+<meta name="robots" content="noindex,nofollow">
+<title>담이 산책 일기</title>
+<style>
+@font-face{font-family:G11;src:url(fonts/Galmuri11.woff2) format("woff2")}
+@font-face{font-family:G11B;src:url(fonts/Galmuri11-Bold.woff2) format("woff2")}
+@font-face{font-family:G9;src:url(fonts/Galmuri9.woff2) format("woff2")}
+html,body{margin:0;height:100%;background:#2b2233;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;touch-action:none}
+.tb{position:fixed;display:none;align-items:center;justify-content:center;background:rgba(255,248,230,.22);border:3px solid rgba(255,248,230,.75);color:#fff;font:15px G11B;border-radius:50%;text-shadow:0 1px 0 #4a2e1e}
+.sm{width:46px;height:30px;border-radius:9px;font:12px G11B;top:calc(8px + env(safe-area-inset-top))}
+#login{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:5}
+#lform{background:#fbf0d6;border:4px solid #4a2e1e;box-shadow:0 0 0 4px #c98a4f,0 0 0 8px #4a2e1e;border-radius:6px;padding:18px 20px;width:min(300px,80vw);font:14px G11;color:#4a3426;display:flex;flex-direction:column;gap:9px}
+#lform h1{margin:0 0 4px;font:20px G11B;color:#c0602a;text-align:center}
+#lform input{font:16px G11;padding:9px 10px;border:3px solid #4a2e1e;border-radius:4px;background:#fffaf0;color:#4a3426;outline:none}
+#lform input:focus{border-color:#c0602a}
+#lform button{font:16px G11B;padding:10px;border:3px solid #4a2e1e;border-radius:4px;background:#f2a33a;color:#fff;text-shadow:0 1px 0 #8a4a2a;cursor:pointer}
+#lform button:disabled{opacity:.6}
+#lmsg{min-height:18px;font:12px G9;color:#d94f6a;text-align:center}
+#lform small{font:11px G9;color:#9a7a5a;text-align:center}
+#rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#2b2233;color:#fff7e0;font:16px G11B;text-align:center;z-index:9}
+@media (orientation:portrait) and (max-width:700px){#rot{display:flex}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c" width="1440" height="810"></canvas></div>
+<div class="tb" data-k="A" style="right:calc(18px + env(safe-area-inset-right));bottom:70px;width:78px;height:78px">행동</div>
+<div class="tb" data-k="B" style="right:calc(104px + env(safe-area-inset-right));bottom:22px;width:66px;height:66px">부르기</div>
+<div class="tb sm" data-k="todo" style="right:calc(118px + env(safe-area-inset-right))">할 일</div>
+<div class="tb sm" data-k="map" style="right:calc(66px + env(safe-area-inset-right))">지도</div>
+<div class="tb sm" data-k="menu" style="right:calc(14px + env(safe-area-inset-right))">메뉴</div>
+<div id="login"><form id="lform" autocomplete="on">
+  <h1>🐶 담이 산책 일기</h1>
+  <input id="lemail" type="email" inputmode="email" autocomplete="username" placeholder="이메일" required>
+  <input id="lpw" type="password" autocomplete="current-password" placeholder="비밀번호" required>
+  <button id="lbtn" type="submit">로그인</button>
+  <div id="lmsg"></div>
+  <small>초대받은 계정으로만 들어올 수 있어요</small>
+</form></div>
+<div id="rot">📱 휴대폰을 가로로 돌려 주세요<br><br>담이가 기다려요!</div>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/lib.js"></script>
+<script src="js/data.js"></script>
+<script src="js/art.js"></script>
+<script src="js/world.js"></script>
+<script src="js/game.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
