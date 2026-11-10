@@ -1,8 +1,8 @@
 // .env(또는 환경변수) → js/config.js 생성. 사용법: node scripts/make-config.mjs
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const env = {};
-if (existsSync('.env')) {
-  for (const line of readFileSync('.env', 'utf8').split(/\r?\n/)) {
+for (const f of ['.env', 'supabase.env']) if (existsSync(f)) {
+  for (const line of readFileSync(f, 'utf8').split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
     if (m && !line.trim().startsWith('#')) env[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
   }
