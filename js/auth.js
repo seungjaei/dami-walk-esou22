@@ -4,10 +4,11 @@
 const CFG=window.DAMI_CONFIG||{};
 const AUTH={enabled:!!(CFG.supabaseUrl&&CFG.supabaseAnonKey),client:null,user:null,err:null,saving:false,lastCloud:0};
 const SUPABASE_JS='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
-function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('스크립트를 불러오지 못했어요'));document.head.appendChild(s);});}
+const SUPABASE_SRI='sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o'; // 파일이 바뀌면 실행 안 됨(위조 방지)
+function loadScript(src,integrity){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;if(integrity){s.integrity=integrity;s.crossOrigin='anonymous';}s.onload=ok;s.onerror=()=>no(new Error('스크립트를 불러오지 못했어요'));document.head.appendChild(s);});}
 async function authInit(){
   if(!AUTH.enabled)return;
-  try{await loadScript(SUPABASE_JS);AUTH.client=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true}});
+  try{await loadScript(SUPABASE_JS,SUPABASE_SRI);AUTH.client=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true}});
     const {data}=await AUTH.client.auth.getSession();AUTH.user=data.session?data.session.user:null;}
   catch(e){AUTH.err='서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.';AUTH.enabled=false;}
 }
