@@ -26,8 +26,8 @@ create policy "saves: 본인만 수정" on public.saves
 --    생년월일은 여기 넣지 않고 로그인 계정 정보(auth.users의 user_metadata)에만 남는다 → 본인만 볼 수 있음.
 create table if not exists public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
-  username   text unique not null,
-  name       text not null,
+  username   text unique not null check (username ~ '^[a-z0-9_]{4,16}$'),
+  name       text not null check (char_length(name) between 1 and 20),
   created_at timestamptz not null default now()
 );
 alter table public.profiles enable row level security;
@@ -37,16 +37,25 @@ create policy "profiles: 로그인한 사람은 조회" on public.profiles
   for select to authenticated using (true);
 create policy "profiles: 본인만 수정" on public.profiles
   for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+-- 아이디(username)는 바꿀 수 없게: 이름만 수정 허용
+revoke insert, update, delete on public.profiles from anon, authenticated;
+grant update (name) on public.profiles to authenticated;
 
 -- 4) 회원가입하면 프로필 자동 생성
+--    아이디는 클라이언트가 보낸 값이 아니라 로그인 이메일(아이디@dami-walk.game)에서만 꺼낸다 → 남의 아이디 사칭·선점 불가.
+--    이메일은 Supabase가 이미 중복을 막으므로 아이디도 자동으로 하나뿐이다.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  uname text := lower(split_part(new.email, '@', 1));
+  dom   text := lower(split_part(new.email, '@', 2));
+  nm    text := left(coalesce(nullif(trim(new.raw_user_meta_data->>'name'), ''), '친구'), 20);
 begin
-  insert into public.profiles (id, username, name)
-  values (new.id,
-          coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-          coalesce(new.raw_user_meta_data->>'name', '친구'))
-  on conflict (id) do nothing;
+  if dom <> 'dami-walk.game' or uname !~ '^[a-z0-9_]{4,16}$' then
+    raise exception '허용되지 않는 아이디 형식입니다';
+  end if;
+  insert into public.profiles (id, username, name) values (new.id, uname, nm)
+  on conflict do nothing;
   return new;
 end; $$;
 drop trigger if exists on_auth_user_created on auth.users;
