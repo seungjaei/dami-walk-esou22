@@ -8,6 +8,10 @@
 <meta name="theme-color" content="#2b2233">
 <meta name="robots" content="noindex,nofollow">
 <title>담이 산책 일기</title>
+<link rel="icon" type="image/png" href="icons/dami-32.png">
+<link rel="apple-touch-icon" href="icons/dami-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-title" content="담이워크">
 <style>
 @font-face{font-family:G11;src:url(fonts/Galmuri11.woff2) format("woff2")}
 @font-face{font-family:G11B;src:url(fonts/Galmuri11-Bold.woff2) format("woff2")}
@@ -30,6 +34,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;tou
 #lform .tabs button.on{background:#c0602a;color:#fff}
 #lform .up{display:none}
 #lform.signup .up{display:block}
+#lform .remember{display:flex;align-items:center;gap:6px;font:13px G9;color:#7a5a3a;cursor:pointer}
+#lform .remember input{width:18px;height:18px;margin:0;accent-color:#c0602a}
 #lform .lbl{font:12px G9;color:#7a5a3a}
 #lform .lbl input{display:block;width:100%;box-sizing:border-box;margin-top:3px}
 #lform input{box-sizing:border-box;width:100%}
@@ -54,6 +60,7 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;tou
   <input id="lid" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="아이디 (영문·숫자 4~16자)" maxlength="16">
   <input id="lpw" type="password" autocomplete="current-password" placeholder="비밀번호 (6자 이상)">
   <input id="lpw2" class="up" type="password" autocomplete="new-password" placeholder="비밀번호 한 번 더">
+  <label class="remember"><input id="lremember" type="checkbox" checked> 아이디 저장</label>
   <button id="lbtn" type="submit">로그인</button>
   <div id="lmsg"></div>
 </form></div>

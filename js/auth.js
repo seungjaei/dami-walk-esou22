@@ -46,6 +46,7 @@ function bindLogin(onDone){
   let mode='in';
   const setMode=m=>{mode=m;f.classList.toggle('signup',m==='up');$('tabIn').classList.toggle('on',m==='in');$('tabUp').classList.toggle('on',m==='up');btn.textContent=m==='up'?'가입하고 시작하기':'로그인';$('lpw').autocomplete=m==='up'?'new-password':'current-password';showLogin(true,'');};
   $('tabIn').onclick=()=>setMode('in');$('tabUp').onclick=()=>setMode('up');
+  try{const sid=localStorage.getItem('dami3_rememberId');if(sid){$('lid').value=sid;$('lremember').checked=true;}}catch(e){}
   f.addEventListener('submit',async e=>{e.preventDefault();
     const id=$('lid').value.trim(),pw=$('lpw').value,name=$('lname').value.trim(),birth=$('lbirth').value;
     if(!ID_RE.test(id)){showLogin(true,'아이디는 영문·숫자 4~16자로 해 주세요.');return;}
@@ -53,6 +54,7 @@ function bindLogin(onDone){
     if(mode==='up'){if(!name){showLogin(true,'이름을 넣어 주세요.');return;}if(!birth){showLogin(true,'생년월일을 골라 주세요.');return;}if(pw!==$('lpw2').value){showLogin(true,'비밀번호가 서로 달라요. 다시 확인해 주세요.');return;}}
     btn.disabled=true;showLogin(true,mode==='up'?'가입하는 중…':'로그인 중…');
     try{if(mode==='up')await signUp(name,birth,id,pw);else await signIn(id,pw);
+      try{if($('lremember').checked)localStorage.setItem('dami3_rememberId',id);else localStorage.removeItem('dami3_rememberId');}catch(e){}
       $('lpw').value='';$('lpw2').value='';showLogin(false,'');await onDone();}
     catch(err){showLogin(true,authErrMsg(err));}finally{btn.disabled=false;}});
 }
