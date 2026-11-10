@@ -1,3 +1,6 @@
 v1_백업.html
 v2_백업.html
 .DS_Store
+.env
+js/config.js
+_site/
