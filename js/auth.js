@@ -24,10 +24,10 @@ async function signUp(name,birth,id,pw){
 async function signOut(){try{await cloudSave(true);}catch(e){}if(AUTH.client)await AUTH.client.auth.signOut();AUTH.user=null;}
 async function cloudLoad(){if(!AUTH.user)return null;const {data,error}=await AUTH.client.from('saves').select('data,updated_at').eq('user_id',AUTH.user.id).maybeSingle();if(error)throw error;return data?data.data:null;}
 async function cloudSave(force){
-  if(!AUTH.user||!AUTH.client||AUTH.saving)return;const now=Date.now();if(!force&&now-AUTH.lastCloud<20000)return;
+  if(!AUTH.user||!AUTH.client)return null;if(AUTH.saving)return null;const now=Date.now();if(!force&&now-AUTH.lastCloud<20000)return;
   AUTH.saving=true;AUTH.lastCloud=now;
-  try{const {error}=await AUTH.client.from('saves').upsert({user_id:AUTH.user.id,data:SV,updated_at:new Date().toISOString()});if(error)throw error;AUTH.cloudOk=true;}
-  catch(e){AUTH.cloudOk=false;console.warn('클라우드 저장 실패',e);}finally{AUTH.saving=false;}
+  try{const {error}=await AUTH.client.from('saves').upsert({user_id:AUTH.user.id,data:SV,updated_at:new Date().toISOString()});if(error)throw error;AUTH.cloudOk=true;return true;}
+  catch(e){AUTH.cloudOk=false;console.warn('클라우드 저장 실패',e);return false;}finally{AUTH.saving=false;}
 }
 const saveKey=()=>AUTH.user?'save_'+AUTH.user.id:'save';
 const playerName=()=>AUTH.user?(AUTH.user.user_metadata&&AUTH.user.user_metadata.name)||AUTH.user.email.split('@')[0]:'혼자 하기';
@@ -50,9 +50,9 @@ function bindLogin(onDone){
     const id=$('lid').value.trim(),pw=$('lpw').value,name=$('lname').value.trim(),birth=$('lbirth').value;
     if(!ID_RE.test(id)){showLogin(true,'아이디는 영문·숫자 4~16자로 해 주세요.');return;}
     if(pw.length<6){showLogin(true,'비밀번호는 6자 이상으로 해 주세요.');return;}
-    if(mode==='up'){if(!name){showLogin(true,'이름을 넣어 주세요.');return;}if(!birth){showLogin(true,'생년월일을 골라 주세요.');return;}}
+    if(mode==='up'){if(!name){showLogin(true,'이름을 넣어 주세요.');return;}if(!birth){showLogin(true,'생년월일을 골라 주세요.');return;}if(pw!==$('lpw2').value){showLogin(true,'비밀번호가 서로 달라요. 다시 확인해 주세요.');return;}}
     btn.disabled=true;showLogin(true,mode==='up'?'가입하는 중…':'로그인 중…');
     try{if(mode==='up')await signUp(name,birth,id,pw);else await signIn(id,pw);
-      $('lpw').value='';showLogin(false,'');await onDone();}
+      $('lpw').value='';$('lpw2').value='';showLogin(false,'');await onDone();}
     catch(err){showLogin(true,authErrMsg(err));}finally{btn.disabled=false;}});
 }

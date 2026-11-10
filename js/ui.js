@@ -28,7 +28,7 @@ function showTouch(on){document.querySelectorAll('.tb').forEach(b=>b.style.displ
 function onKey(k){
   if(k==='KeyV'){muted=!muted;SV.muted=muted;save();return;}
   const OK=k==='Enter'||k==='KeyE'||k==='KeyJ',CALL=k==='Space'||k==='KeyK',BACK=k==='Escape'||k==='KeyX'||k==='Backspace';
-  if(scene==='title'){if(OK||CALL)startGame(false);if(k==='KeyN')startGame(true);if(k==='KeyL'&&AUTH.user)logout();return;}
+  if(scene==='title'){if(TCONF){if(k==='KeyY'){TCONF=false;startGame(true);}else if(k==='KeyN'||BACK)TCONF=false;return;}if(OK||CALL)startGame(false);if(k==='KeyN'&&SV.today){TCONF=true;}if(k==='KeyL'&&AUTH.user)logout();return;}
   if(scene==='login')return;
   if(scene==='diary'){if((OK||CALL)&&sceneT>1.2){scene='game';sceneT=0;musicOn=true;enterArea('home',{wake:true});}return;}
   if(scene!=='game')return;
@@ -51,7 +51,8 @@ function ovKey(ov,k,OK,BACK){
 addEventListener('keyup',e=>{if(G&&G.ov&&G.ov.type==='bath'&&['Enter','KeyE','KeyJ','Space'].includes(e.code))G.ov.hold=false;});
 function onTap(p){
   if(scene==='login')return;
-  if(scene==='title'){if(AUTH.user&&p.x>VW-72&&p.y<26){logout();return;}if(p.y>VH*.62&&p.x>VW/2+4&&SV.today)startGame(true);else startGame(false);return;}
+  if(scene==='title'){if(AUTH.user&&p.x>VW-72&&p.y<26){logout();return;}if(TCONF){if(p.y>136&&p.y<162){if(p.x>VW/2-110&&p.x<VW/2-10){TCONF=false;startGame(true);}else if(p.x>VW/2+10&&p.x<VW/2+110)TCONF=false;}return;}
+    if(SV.today&&p.x>VW-90&&p.y>VH-24){TCONF=true;return;}if(SV.today&&!(p.y>90&&p.y<130&&Math.abs(p.x-VW/2)<80))return;startGame(false);return;}
   if(scene==='diary'){onKey('Enter');return;}
   const ov=G&&G.ov;if(!ov){if(!isTouch)interact();return;}
   if(ov.type==='dlg'){const L=ov.lines[ov.i];if(ov.choices&&ov.i===ov.lines.length-1&&ov.n>=L.length&&ov._cy){const i=Math.floor((p.y-ov._cy)/14);if(i>=0&&i<ov.choices.length){ov.sel=i;onKey('Enter');}return;}onKey('Enter');return;}
@@ -65,7 +66,8 @@ function onTap(p){
 function openDialog(o){const d=Object.assign({type:'dlg',i:0,n:0,sel:0},o);if(G.ov&&G.ov.type==='dlg'){(G.queue=G.queue||[]).push(d);return;}G.ov=d;}
 function openMenu(o){G.ov=Object.assign({type:'menu',sel:0},o);}
 function closeOv(){G.ov=null;}
-function openPause(){openMenu({title:'메뉴',items:[{label:'계속하기',fn:closeOv},{label:'오늘 할 일',fn:()=>{G.ov={type:'todo'};}},{label:'친구 도감 · 보물 상자',fn:()=>{G.ov={type:'dex',tab:0};}},{label:muted?'소리 켜기':'소리 끄기',fn:()=>{muted=!muted;SV.muted=muted;save();closeOv();}},{label:'저장하고 타이틀로',fn:()=>{save(true);G.ov=null;scene='title';musicOn=false;showTouch(false);}}].concat(AUTH.user?[{label:'로그아웃',fn:()=>{save(true);logout();}}]:[])});}
+async function saveNow(){closeOv();store.set(saveKey(),SV);if(!AUTH.user){toast('이 기기에 저장했어요 💾');SFX.pick();return;}toast('저장하는 중…');AUTH.saving=false;const ok=await cloudSave(true);toast(ok?'저장했어요! ☁️':'인터넷 문제로 이 기기에만 저장했어요');if(ok)SFX.pick();}
+function openPause(){openMenu({title:'메뉴',items:[{label:'계속하기',fn:closeOv},{label:'저장하기',fn:saveNow},{label:'오늘 할 일',fn:()=>{G.ov={type:'todo'};}},{label:'친구 도감 · 보물 상자',fn:()=>{G.ov={type:'dex',tab:0};}},{label:muted?'소리 켜기':'소리 끄기',fn:()=>{muted=!muted;SV.muted=muted;save();closeOv();}},{label:'저장하고 타이틀로',fn:()=>{save(true);G.ov=null;scene='title';musicOn=false;showTouch(false);}}].concat(AUTH.user?[{label:'로그아웃',fn:()=>{save(true);logout();}}]:[])});}
 function openShop(){const items=SHOP.map(s=>{const owned=s.acc&&SV.acc[s.id];const locked=(s.lv||1)>SV.lv;return{label:s.name+(owned?' (보유)':''),right:locked?`Lv${s.lv}`:`${s.price}`,dis:owned||locked,coin:!locked,fn:()=>buy(s)};});
   items.push({label:'나가기',fn:closeOv});openMenu({title:`멍멍 펫샵  (🦴 ${SV.coins})`,items,shop:true});}
 function buy(s){if(SV.coins<s.price){toast('코인이 모자라요');SFX.soft();return;}SV.coins-=s.price;SFX.pick();
@@ -270,6 +272,7 @@ function drawBath(t,ov){updBath(1/60);ctx.fillStyle='rgba(40,25,20,.55)';ctx.fil
   bar(VW/2-60,y+24,120,ov.prog/100,'#5aa9e6');txt(isTouch?'손가락으로 문질러요':'방향키로 움직여 문질러요',VW/2,y+h-16,'#5a7a8a',9,'center','G9');}
 
 // ---------- 타이틀 ----------
+let TCONF=false;
 function drawTitle(t,bgOnly){
   const sky=ctx.createLinearGradient(0,0,0,VH);sky.addColorStop(0,'#f6b48a');sky.addColorStop(.55,'#ffd9a8');sky.addColorStop(1,'#fff0cf');ctx.fillStyle=sky;ctx.fillRect(0,0,VW,VH);
   ell(ctx,380,100,24,24,'#fff4d0');ell(ctx,380,100,19,19,'#fffbe8');
@@ -288,8 +291,12 @@ function drawTitle(t,bgOnly){
   if(bgOnly)return;
   if(AUTH.enabled&&AUTH.user){txt(`🐾 ${playerName()} 님`,10,8,'#8a4a2a',9,'left','G9');panel(VW-70,4,64,20);txt('로그아웃',VW-38,9,'#4a3426',9,'center','G9');}
   if(AUTH.err)txt(AUTH.err,VW/2,250,'#d94f6a',9,'center','G9');
-  if(SV.today){panel(VW/2-120,96,112,26);txt(`이어하기 DAY ${SV.day}`,VW/2-64,103,'#c0602a',11,'center','G11B');panel(VW/2+8,96,112,26);txt('새로 시작',VW/2+64,103,'#4a3426',11,'center','G11');
-    if(!isTouch)txt('Enter 이어하기 · N 새로 시작',VW/2,128,'#8a4a2a',9,'center','G9');}
+  if(SV.today){panel(VW/2-70,94,140,30);txt(`이어하기 DAY ${SV.day}`,VW/2,102,'#c0602a',11,'center','G11B');
+    if(!isTouch)txt('Enter 이어하기',VW/2,128,'#8a4a2a',9,'center','G9');
+    txt('처음부터 다시',VW-8,VH-12,'rgba(138,74,42,.75)',9,'right','G9');
+    if(TCONF){ctx.fillStyle='rgba(40,25,20,.55)';ctx.fillRect(0,0,VW,VH);panel(VW/2-120,80,240,104);txt('정말 처음부터 다시 할까요?',VW/2,92,'#c0602a',11,'center','G11B');txt(`지금까지의 기록(DAY ${SV.day})이 모두 지워져요.`,VW/2,110,'#4a3426',9,'center','G9');
+      panel(VW/2-110,136,100,26,'#ffd6d6');txt('네, 지울래요',VW/2-60,143,'#d94f6a',9,'center','G11B');panel(VW/2+10,136,100,26);txt('아니요',VW/2+60,143,'#4a3426',9,'center','G11B');
+      if(!isTouch)txt('Y 지우기 · N/Esc 취소',VW/2,166,'#9a7a5a',9,'center','G9');}}
   else if(Math.floor(t*1.6)%2===0)txt(isTouch?'화면을 눌러 시작':'Enter 키로 시작',VW/2,104,'#fffaf0',11,'center','G11B','#8a4a2a');
 }
 function startGame(fresh){SFX.sel();
