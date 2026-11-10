@@ -55,9 +55,22 @@ begin
     raise exception '허용되지 않는 아이디 형식입니다';
   end if;
   insert into public.profiles (id, username, name) values (new.id, uname, nm)
-  on conflict do nothing;
+  on conflict (id) do nothing;  -- 아이디가 겹치면 오류로 가입 자체를 막음
   return new;
 end; $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- 5) 가입 후 로그인 이메일(=아이디) 변경 금지 → 프로필 아이디와 계정이 항상 일치
+create or replace function public.block_email_change()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.email is distinct from old.email then
+    raise exception '아이디는 바꿀 수 없습니다';
+  end if;
+  return new;
+end; $$;
+drop trigger if exists on_auth_user_email_change on auth.users;
+create trigger on_auth_user_email_change before update of email on auth.users
+  for each row execute function public.block_email_change();
