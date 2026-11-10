@@ -9,19 +9,26 @@ function newGameState(){G={area:null,pl:{x:0,y:0,dir:'down',face:1,anim:0,moving
 // ---------- 지역 이동 ----------
 function enterArea(kind,arg){
   let A;
-  if(kind==='home')A=genRoom('home');else if(kind==='house')A=genRoom(arg.id);else if(kind==='town')A=genTown();else A=genWalk(arg.place);
-  G.area=A;const sp=(arg&&arg.x!==undefined)?arg:A.spawn;G.pl.x=sp.x;G.pl.y=sp.y;G.pl.dir=kind==='town'?'down':'up';
-  const d=G.dami;d.x=G.pl.x+(kind==='walk'?16:10);d.y=G.pl.y+4;d.state='idle';G.ball=null;G.play=null;
+  if(kind==='home')A=genRoom('home');else if(kind==='house')A=genRoom(arg.id);else if(kind==='town')A=genTown();else A=genZone(arg.id);
+  G.area=A;let sp=A.spawn;if(arg&&arg.x!==undefined)sp=arg;else if(arg&&arg.from)sp=spawnAt(kind==='town'?'town':arg.id,arg.from);
+  G.pl.x=sp.x;G.pl.y=sp.y;G.pl.dir=arg&&arg.from?({N:'down',S:'up',E:'side',W:'side'})[arg.from]:kind==='town'?'down':'up';if(arg&&arg.from)G.pl.face=arg.from==='E'?-1:1;
+  const d=G.dami;d.x=G.pl.x+(A.outdoor?14:10)*(G.pl.face||1);d.y=G.pl.y+4;if(!freeAt(d.x,d.y)){d.x=G.pl.x;d.y=G.pl.y;}d.state='idle';G.ball=null;G.play=null;
   if(arg&&arg.wake&&A.cushion){d.x=A.cushion.x;d.y=A.cushion.y-2;d.state='sleep';d.t=2;}
   G.bubbles=[];G.parts=[];G.fade=1;G.exitLock=true;
   G.cam.x=clamp(G.pl.x-VW/2,Math.min(0,(A.PW-VW)/2),Math.max(0,A.PW-VW));G.cam.y=clamp(G.pl.y-VH/2,Math.min(0,(A.PH-VH)/2),Math.max(0,A.PH-VH));
-  SV.today.where=kind==='walk'?'town':kind==='house'?'town':kind;save();
-  if(kind==='walk')tip('walk','산책 중엔 담이가 리드줄로 연결돼요. 떨어진 음식을 먹으려 하면 [부르기]로 불러 주세요!');
-  if(kind==='town')tip('town','마을이에요! 집 문 앞에서 [행동]으로 들어가고, 오른쪽 끝 길로 나가면 산책 지도가 열려요.');
+  SV.today.where=kind==='zone'||kind==='house'?'town':kind;save();
+  if(kind==='zone'){visitZone(arg.id);tip('walk','산책 중엔 담이가 리드줄로 연결돼요. 떨어진 음식을 먹으려 하면 [부르기]로 불러 주세요!');}
+  if(kind==='town')tip('town','마을이에요! 집 문 앞에서 [행동]으로 들어가요. 마을 네 방향 길 끝으로 걸어가면 옆 구역으로 산책을 나가요. 지도는 [지도] 버튼!');
 }
-function finishWalk(){const T0=SV.today.todo;if(!T0.walk){T0.walk=1;addCoins(15);gainXP(20);logDay(`${PLACES[G.area.place].name} 산책 코스를 끝까지 걸었다.`);toast('산책 코스 완주! +15코인');}openMap(true);}
-function travel(place){SV.today.clock+=15;if(place==='town')enterArea('town',{x:(43)*T,y:17.4*T});else enterArea('walk',{place});}
-
+function goZone(to,from,exitDir){const P0=PLACES[to];
+  if(P0.lv>SV.lv){toast(`${P0.name}은(는) 산책 레벨 ${P0.lv}에 열려요`);SFX.soft();const d=DIRS[exitDir];G.pl.x-=d[0]*18;G.pl.y-=d[1]*18;G.dami.x-=d[0]*18;G.dami.y-=d[1]*18;return;}
+  SV.today.clock+=5;enterArea(to==='town'?'town':'zone',{id:to,from});}
+function visitZone(id){const V=SV.today.visited;if(V.includes(id))return;V.push(id);addCoins(5);gainXP(8);toast(`새 구역 산책: ${PLACES[id].name} (+5코인)`);logDay(`${PLACES[id].name}을(를) 걸었다.`);
+  if(V.length>=2&&!SV.today.todo.walk){SV.today.todo.walk=1;addCoins(15);gainXP(15);setTimeout(()=>toast('오늘의 산책 완료! +15코인'),2600);}}
+function showNews(){const E=SV.today.events;if(SV.today.newsShown)return;SV.today.newsShown=true;
+  const L=E.length?E.map(k=>`${EVENTS[k].title} — ${EVENTS[k].desc}`):['오늘은 특별한 소식이 없어요. 담이랑 느긋하게 산책해요!'];
+  const dd=FESTIVAL_DAY-SV.day;if(dd>0)L.push(`마을 강아지 축제까지 D-${dd}!`);
+  openDialog({name:'📰 오늘의 마을 소식',lines:L});}
 // ---------- 충돌 ----------
 function solidPx(x,y){const A=G.area,tx=Math.floor(x/T),ty=Math.floor(y/T);if(tx<0||ty<0||tx>=A.W||ty>=A.H)return true;return A.solid[ty*A.W+tx]===1;}
 function freeAt(x,y,hw=4,hh=2){return !solidPx(x-hw,y-hh)&&!solidPx(x+hw,y-hh)&&!solidPx(x-hw,y+hh)&&!solidPx(x+hw,y+hh);}
@@ -51,7 +58,7 @@ function update(dt){
   if(G.tip){G.tip.t-=dt;G.tip.n+=dt*30;if(G.tip.t<=0)G.tip=null;}
   if(G.toast){G.toast.t-=dt;if(G.toast.t<=0)G.toast=null;}
   // 상태 감소
-  addSt('hunger',-dt*.07);addSt('thirst',-dt*(A.outdoor?.11:.06));addSt('mood',-dt*((st().hunger<25||st().thirst<25)?.06:.012));addSt('clean',-dt*(A.outdoor?.05:.01));
+  addSt('hunger',-dt*.07);addSt('thirst',-dt*(A.outdoor?.11:.06));addSt('mood',-dt*((st().hunger<25||st().thirst<25)?.06:.012));addSt('clean',-dt*(A.outdoor?(SV.today.events.includes('rain')?.12:.05):.01));
   G.lowT-=dt;if(G.lowT<=0){G.lowT=35;if(st().thirst<25)bubble('dami','목말라요…',2);else if(st().hunger<25)bubble('dami','배고파요…',2);}
   const cl=SV.today.clock;
   if(cl>18*60)tip('evening','해가 지고 있어요. 집에 가서 저녁밥 → 간식 → 샤워 → 잠자기로 하루를 마무리해요.');
@@ -165,7 +172,7 @@ function updBall(dt){const b=G.ball;if(b.state!=='fly')return;b.vz-=180*dt;b.z+=
 // ---------- NPC ----------
 function updNPCs(dt){const A=G.area,o=G.pl;
   for(const n of A.npcs){const near=Math.hypot(n.x-o.x,n.y-o.y)<44;
-    if(n.role==='walker'&&n.route&&!near&&!(G.play&&G.play.w===n)){const p=A.line[n.ri];const tx=p[0]*T+8,ty=p[1]*T+4;const r=Math.hypot(tx-n.x,ty-n.y);
+    if(n.role==='walker'&&n.route&&!near&&!(G.play&&G.play.w===n)){const p=n.route.line[n.ri];const tx=p[0]*T+8,ty=p[1]*T+4;const r=Math.hypot(tx-n.x,ty-n.y);
       if(r<2){n.ri+=n.rdir;if(n.ri>=n.route.b||n.ri<=n.route.a)n.rdir*=-1;}else{n.x+=(tx-n.x)/r*16*dt;n.y+=(ty-n.y)/r*16*dt;setDir(n,tx-n.x,ty-n.y);n.anim+=dt*6;n.moving=true;}}
     else{n.moving=false;if(near){setDir(n,o.x-n.x,o.y-n.y);}}
     if(n.pup&&!(G.play&&G.play.w===n)){const p=n.pup;p.moving=false;const r=Math.hypot(p.x-n.x,p.y-n.y);if(r>16){stepTo(p,n.x+12,n.y+4,40,dt);p.anim+=dt*9;}}
@@ -174,17 +181,17 @@ function updPlay(dt){const P0=G.play,d=G.dami,p=P0.w.pup;P0.t-=dt;const a=P0.t*3
   d.x=P0.cx+Math.cos(a)*16;d.y=P0.cy+Math.sin(a)*9;setDir(d,-Math.sin(a),Math.cos(a));d.moving=true;d.anim+=dt*10;
   p.x=P0.cx+Math.cos(a+Math.PI)*16;p.y=P0.cy+Math.sin(a+Math.PI)*9;setDir(p,-Math.sin(a+Math.PI),Math.cos(a+Math.PI));p.moving=true;p.anim+=dt*10;
   if(Math.random()<dt*4)hearts(P0.cx,P0.cy-14,1);
-  if(P0.t<=0){const w=P0.w.w;G.play=null;d.state='idle';P0.w.played=true;addSt('mood',15);gainAff(2);gainXP(8);
-    const isNew=!SV.friends[w.id];SV.friends[w.id]=(SV.friends[w.id]||0)+1;if(!SV.today.met.includes(w.dog))SV.today.met.push(w.dog);
-    for(const q of SV.today.quests)if(q.type==='play'&&q.state==='active'){q.got++;if(q.got>=q.n){q.state='ready';toast('퀘스트 완료! 도윤이에게 알려 주세요');}}
-    logDay(`${w.breed} ${w.dog}랑 신나게 놀았다.`);
-    openDialog({name:w.owner,P:w.P,id:w.id,lines:[`${w.dog}가 담이를 엄청 좋아하네요!`,isNew?`📖 친구 도감에 '${w.dog}(${w.breed})'가 등록됐어요!`:'또 같이 놀아요~']});}}
-
+  if(P0.t<=0){const n=P0.w,w=n.w;G.play=null;d.state='idle';const isNew=befriend(n,`${w.breed} ${w.dog}랑 신나게 뛰어놀았다.`);
+    openDialog({name:w.owner,P:w.P,id:w.id,lines:[`${w.dog}가 담이를 엄청 좋아하네요!`].concat(isNew?[`📖 친구 도감에 '${w.dog}(${w.breed})' 등록!`]:[])});}}
+function befriend(n,logText){const w=n.w;n.played=true;const isNew=!SV.friends[w.id];SV.friends[w.id]=(SV.friends[w.id]||0)+1;if(!SV.today.met.includes(w.dog))SV.today.met.push(w.dog);
+  addSt('mood',10);gainAff(2);gainXP(8);hearts(G.dami.x,G.dami.y-16);
+  for(const q of SV.today.quests)if(q.type==='play'&&q.state==='active'){q.got++;if(q.got>=q.n){q.state='ready';toast('퀘스트 완료! 도윤이에게 알려 주세요');}}
+  logDay(logText);return isNew;}
 // ---------- 산책길 전용 ----------
 function updWalk(dt){const A=G.area,o=G.pl,d=G.dami;
   for(const s of A.sniffs)s.sniff.ig=Math.max(0,s.sniff.ig-dt);for(const g0 of A.digs)g0.ig=Math.max(0,(g0.ig||0)-dt);
   for(const f of A.foods)if(f.alive&&Math.hypot(o.x-f.x,o.y-f.y-2)<12){f.alive=false;SFX.pick();bubble('pl','주워서 쓰레기통에 쏙!',1.3);if(d.target===f)d.state='idle';gainXP(2);}
-  for(const it of A.qitems)if(!it.got&&Math.hypot(o.x-it.x,o.y-it.y)<14){it.got=true;SFX.pick();const q=it.q;
+  for(const it of A.qitems)if(!it.got&&Math.hypot(o.x-it.x,o.y-it.y)<14){it.got=true;SFX.pick();if(it.kitten){SV.today.ev.kitten.state='found';SFX.clover();toast('아기 고양이 나비를 찾았어요! 복순 할머니께 데려다 줘요');logDay('길 잃은 아기 고양이 나비를 찾았다!');bubble('dami','냐옹이 찾았다!',1.6,'#c0602a');continue;}const q=it.q;
     if(q.type==='find'){q.state='ready';toast(`${q.item}을(를) 찾았어요! ${NPCS[q.giver].name}께 가져다 드려요`);logDay(`${q.item}을(를) 찾았다.`);}
     else{q.got++;toast(`${q.item} ${q.got}/${q.n}`);if(q.got>=q.n){q.state='ready';toast(`${q.item} 다 모았어요! 하린 꽃집으로~`);}}}
   for(const dg of A.dogs){
@@ -194,6 +201,7 @@ function updWalk(dt){const A=G.area,o=G.pl,d=G.dami;
     if(q<dg.fear&&d.state!=='panic'&&!(d.inv>0)){d.inv=4;SV.today.yelp++;addSt('mood',-12);SFX.yelp();d.state='panic';d.t=1.3;bubble('dami','깨갱!!',1.4,'#d94f6a');tip('hurt','담이가 놀랐어요. 다가가서 [행동] → 쓰담쓰담으로 달래 주세요.');}
   }
   d.inv=Math.max(0,(d.inv||0)-dt);
+  for(const it of A.qitems)if(it.kitten&&!it.got&&!it.hinted&&Math.hypot(d.x-it.x,d.y-it.y)<120){it.hinted=1;bubble('dami','킁킁… 고양이 냄새!',1.8,'#c0602a');}
   for(const k of A.ducks){k.t-=dt;if(k.t<=0){k.t=R(2,5);const tx=k.x+R(-30,30),ty=k.y+R(-14,14);if(A.WT[Math.floor(ty)*A.PW+Math.floor(tx)]&&A.WT[Math.floor(ty+5)*A.PW+Math.floor(tx)]){k.tx=tx;k.ty=ty;}}const r=Math.hypot(k.tx-k.x,k.ty-k.y);if(r>1){k.x+=(k.tx-k.x)/r*8*dt;k.y+=(k.ty-k.y)/r*8*dt;k.face=k.tx>k.x?1:-1;}}
 }
 function updBirds(dt){const A=G.area,o=G.pl,d=G.dami;for(const b of A.birds){if(!b.alive)continue;if(b.fly){b.x+=b.vx*dt;b.y+=b.vy*dt;b.fly+=dt;if(b.fly>3)b.alive=false;continue;}
@@ -230,6 +238,7 @@ function openDamiMenu(){const d=G.dami;if(d.state==='sleep'&&SV.today.clock>=21*
   const items=[{label:'쓰담쓰담',fn:()=>{closeOv();doPet();}},{label:`간식 주기`,right:`${SV.treats}개`,dis:SV.treats<=0,fn:()=>{closeOv();doTreat();}}];
   for(const [k,t] of Object.entries(TRICKS)){if(t.lv<=SV.alv)items.push({label:`'${t.name}'`,right:`${Math.round(Math.min(.97,SV.skill[k]+(G.boost>0?.2:0))*100)}%`,fn:()=>{closeOv();doTrick(k);}});else items.push({label:`??? (우정 Lv${t.lv})`,dis:true,fn:()=>{}});}
   items.push({label:'공 던지기',fn:()=>{closeOv();throwBall();}});
+  if(G.area.kind==='walk')items.push({label:'원반 놀이 (미니게임)',right:SV.frisbee?'':'원반 필요',dis:!SV.frisbee,fn:()=>{closeOv();startFrisbee(false);}});
   items.push({label:'닫기',fn:closeOv});
   openMenu({title:'담이랑 뭐 할까?',items,dami:true});}
 function doPet(){const d=G.dami;d.state='pet';d.t=1.5;SFX.pet();addSt('mood',12);gainAff(1);bubble('dami',pick(['헤헤 좋아♪','더 해줘요~','행복해!']),1.4,'#d94f6a');}
@@ -244,15 +253,27 @@ function doTrick(k){const d=G.dami,t=TRICKS[k];const p=Math.min(.97,SV.skill[k]+
 
 // ---------- 대화·퀘스트 ----------
 function talk(n){SFX.sel();
-  if(n.role==='walker'){const w=n.w;if(n.played){openDialog({name:w.owner,P:w.P,id:w.id,lines:[`${w.dog}가 또 놀고 싶대요. 다음에 또 만나요!`]});return;}
-    openDialog({name:w.owner,P:w.P,id:w.id,lines:[`안녕하세요! 저는 ${w.owner}, 얘는 ${w.breed} ${w.dog}예요.`,`${w.dog}랑 같이 놀래요?`],choices:['같이 놀자!','다음에요'],cb:i=>{if(i===0)startPlay(n);}});return;}
+  if(n.role==='walker'){walkerTalk(n);return;}
+  if(n.role==='host'){if(SV.today.ev.frisbeeDone){openDialog({name:n.name,P:n.P,id:'host',lines:['참가해 줘서 고마워요! 담이 점프 최고였어요.']});return;}
+    openDialog({name:n.name,P:n.P,id:'host',lines:['호수 공원 원반 대회에 오신 걸 환영해요!','다섯 번 던져서 30점 넘으면 상품이 있어요. 참가할래요?'],choices:['참가할래요!','다음에요'],cb:i=>{if(i===0)startFrisbee(true);}});return;}
+  if(n.role==='merchant'){openDialog({name:n.name,P:n.P,id:'merchant',lines:['어이쿠, 귀여운 손님이네. 먼 데서 온 귀한 물건들이야. 구경해 봐!'],cb:()=>openShop(true)});return;}
   if(n.role==='recv'){const q=n.q;if(q.state==='active'){q.state='ready';SFX.clover();logDay(`${q.to}께 빵 바구니를 배달했다.`);openDialog({name:q.to,P:n.P,id:'recv',lines:['어머, 몽글 빵집 빵이네요! 고마워요.','담이도 착하게 기다렸구나~']});}else openDialog({name:q.to,P:n.P,id:'recv',lines:['빵 정말 맛있어요!']});return;}
   const id=n.id,def=NPCS[id];const qs=SV.today.quests.filter(q=>q.giver===id);
+  const ev=SV.today.ev,E=SV.today.events;
+  if(id==='grandma'&&ev.kitten&&ev.kitten.state==='found'){ev.kitten.state='done';addCoins(50);gainXP(30);gainAff(2);SFX.clear();logDay('나비를 할머니께 데려다 드렸다. 할머니가 눈물을 글썽이셨다.');
+    openDialog({name:def.name,P:def.P,id,lines:['나비야! 아이고 우리 나비…! 어디 갔었니.','담이야, 정말 고맙다. 이건 할머니 마음이야.','🦴 50코인 · 경험치 +30']});return;}
+  if(id==='grandma'&&ev.kitten&&ev.kitten.state==='lost'){openDialog({name:def.name,P:def.P,id,lines:['우리 나비가 아침부터 안 보이는구나…','고양이는 멀리 안 간다던데, 바깥 구역 어딘가 수풀에 숨어 있을 거야. 담이 코로 찾아 주렴.']});return;}
+  if(id==='kid'&&E.includes('bday')&&!ev.bday){openDialog({name:def.name,P:def.P,id,lines:['오늘 내 생일이다! 담이도 축하해 주러 왔어?'],choices:[`간식 선물하기 (간식 ${SV.treats}개)`,'나중에 올게'],cb:i=>{if(i!==0)return;
+      if(SV.treats<=0){openDialog({name:def.name,P:def.P,id,lines:['간식이 없구나… 괜찮아! 와 준 것만으로도 좋아!']});return;}
+      SV.treats--;ev.bday=1;SV.acc.crown=1;addCoins(20);gainAff(2);gainXP(20);SFX.clear();hearts(G.dami.x,G.dami.y-16,6);logDay('도윤이 생일 파티에 갔다. 담이가 생일 왕관을 받았다!');
+      openDialog({name:def.name,P:def.P,id,lines:['우와! 담이 선물이다! 고마워!','이거 담이 왕관! 생일 파티 기념이야. 같이 케이크 냄새 맡자~','👑 생일 왕관 · 🦴 20코인']});}});return;}
+
   const ready=qs.find(q=>q.state==='ready'),fresh=qs.find(q=>q.state==='new'),act=qs.find(q=>q.state==='active');
   if(ready){finishQuest(ready,n);return;}
   if(fresh){openDialog({name:def.name,P:def.P,id,lines:fresh.ask,choices:['좋아요, 맡겨 주세요!','다음에요'],cb:i=>{if(i===0){fresh.state='active';SFX.sel();toast(`퀘스트 수락: ${fresh.title}`);tip('quest','받은 퀘스트는 [할 일]에서 볼 수 있어요. 장소가 있는 퀘스트는 산책 지도에 ! 표시가 떠요.');}}});return;}
   if(act){openDialog({name:def.name,P:def.P,id,lines:[act.type==='trick'?`담이에게 다가가 [행동]으로 '${TRICKS[act.trick].name}'를 시켜 보세요!`:`${act.title}, 부탁할게~`+(act.place&&act.place!=='town'?` (${PLACES[act.place].name})`:'')]});return;}
   if(def.shop){openDialog({name:def.name,P:def.P,id,lines:[pick(def.idle)],cb:()=>openShop()});return;}
+  if(id==='coach'){openDialog({name:def.name,P:def.P,id,lines:[pick(def.idle),'어질리티 코스 한번 달려 볼래요? 빠를수록 상금이 커요!'],choices:['달려 볼래요!','다음에요'],cb:i=>{if(i===0)startAgility();}});return;}
   openDialog({name:def.name,P:def.P,id,lines:[pick(def.idle)]});}
 function finishQuest(q,n){const def=NPCS[q.giver];q.state='done';SV.today.todo.quest++;addCoins(q.reward);SFX.clear();
   let extra='';if(q.bonusTreat){SV.treats+=q.bonusTreat;extra=` · 간식 +${q.bonusTreat}`;}if(q.acc&&!SV.acc[q.acc]){SV.acc[q.acc]=1;extra+=` · ${ACCS[q.acc].name}`;}
@@ -271,3 +292,22 @@ function endDay(){const Td=SV.today;const done=Object.values(Td.todo).filter(v=>
   if(G.diary.festival){SV.festival=true;const sc=festivalScore();G.diary.fest=sc;addCoins(100);}
   SFX.clear();musicOn=false;scene='diary';sceneT=0;SV.day++;newToday();save(true);}
 function festivalScore(){const tricks=Object.values(TRICKS).filter(t=>t.lv<=SV.alv).length,fr=Object.keys(SV.friends).length,acc=Object.keys(SV.acc).length;return{tricks,fr,acc,alv:SV.alv,total:tricks*20+fr*10+acc*8+SV.alv*10};}
+
+// ---------- 산책객 만남: 대사도 매번 다르고, 할 일을 고를 수 있음 ----------
+function walkerTalk(n){const w=n.w,met=SV.friends[w.id]||0,c=SV.today.clock;
+  const lines=[met?pick(w.again):w.first[0]];
+  const situ=SV.today.events.includes('rain')?SITU.rain:c<10*60?SITU.morning:c>=18*60?SITU.evening:null;if(situ&&rnd()<.6)lines.push(pick(situ));
+  if(n.played){lines.push(pick(w.chat));openDialog({name:w.owner,P:w.P,id:w.id,lines});return;}
+  const acts=MEET_ACTS.slice().sort(()=>rnd()-.5).slice(0,3);lines.push(`${w.dog}랑 뭐 할까요?`);
+  openDialog({name:w.owner,P:w.P,id:w.id,lines,choices:[...acts.map(a=>a.label),'다음에요'],cb:i=>{const a=acts[i];if(a)doMeet(n,a.id);}});}
+function doMeet(n,id){const w=n.w,dlg=(L)=>openDialog({name:w.owner,P:w.P,id:w.id,lines:L});
+  const reg=isNew=>isNew?[`📖 친구 도감에 '${w.dog}(${w.breed})' 등록!`]:[];
+  if(id==='play'){startPlay(n);return;}
+  if(id==='treat'){let L;if(SV.treats>0){SV.treats--;L=[`${w.dog}랑 담이가 간식을 사이좋게 나눠 먹었어요.`,`${w.owner}: 담이 매너 최고네요!`];}else{SV.treats++;L=['간식이 없어요? 괜찮아요, 우리 거 하나 줄게요!','🦴 간식 +1'];}
+    SFX.eat();G.dami.state='treat';G.dami.t=1.2;dlg(L.concat(reg(befriend(n,`${w.dog}랑 간식을 나눠 먹었다.`))));return;}
+  if(id==='photo'){G.fade=.9;SFX.clover();SV.photos=(SV.photos||0)+1;dlg([`찰칵! 담이랑 ${w.dog} 투샷 완성!`,`${w.owner}: 사진 보내 줄게요~ 너무 잘 나왔다!`].concat(reg(befriend(n,`${w.dog}랑 사진을 찍었다.`))));return;}
+  if(id==='chat'){const L=[pick(w.chat)];const dg=(G.area.digs||[]).find(g=>!g.found&&!g.revealed);if(dg){dg.revealed=true;L.push(w.hint,'(지도와 미니맵에 반짝이로 표시됐어요)');}
+    dlg(L.concat(reg(befriend(n,`${w.owner}님이랑 수다를 떨었다.`))));return;}
+  if(id==='trick'){const ks=Object.keys(TRICKS).filter(k=>TRICKS[k].lv<=SV.alv),k=pick(ks);G.pl.x+=0;doTrick(k);
+    setTimeout(()=>{if(!G)return;const ok=G.dami.ok;if(ok)addCoins(5);dlg((ok?[`우와, ${TRICKS[k].name}! 담이 천재다!`,`${w.dog}도 배워야겠다~ (🦴 +5)`]:['괜찮아요, 연습하면 돼요!',`${w.dog}도 처음엔 못 했어요.`]).concat(reg(befriend(n,`${w.owner}님 앞에서 '${TRICKS[k].name}' 재주를 보여 줬다.`))));},2700);return;}
+}
