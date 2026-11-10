@@ -27,8 +27,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: node scripts/make-config.mjs
-      - name: 배포 파일 모으기
-        run: mkdir _site && cp -r index.html manifest.json js fonts icons _site/
+      - name: 배포 파일 모으기 (+ 새 버전이 바로 보이도록 파일 주소에 버전 표시)
+        run: |
+          mkdir _site && cp -r index.html manifest.json js fonts icons _site/
+          V=${GITHUB_SHA::7}
+          sed -i -E "s#(src=\"js/[a-z]+\.js)\"#\1?v=$V\"#g; s#(href=\"(manifest\.json|icons/[a-z0-9-]+\.png))\"#\1?v=$V\"#g" _site/index.html
+          grep -c "?v=$V" _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
