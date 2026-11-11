@@ -81,7 +81,7 @@ function addEdgeExits(A,id){
 }
 function spawnAt(id,from){const [ex,ey]=edgeOf(id,from),W0=id==='town'?46:ZW,H0=id==='town'?36:ZH;const d=DIRS[from];
   return{x:(clamp(ex-d[0]*2.2,1.5,W0-1.5))*T+8,y:(clamp(ey-d[1]*2.2,1.5,H0-1.5))*T+(from==='N'?10:4)};}
-function objAnchor(ob){const im=ob.img;if(ob.kind==='tree')return[ob.x-18,ob.y-46];if(ob.kind==='house')return[ob.x-30,ob.y-60];return[ob.x-im.width/2,ob.y-im.height+2];}
+function objAnchor(ob){const im=ob.img;if(ob.kind==='tree')return[ob.x-18,ob.y-46];if(ob.kind==='house')return[ob.x-im.width/2,ob.y-im.height+2];return[ob.x-im.width/2,ob.y-im.height+2];}
 function makeThumb(A){const k=.25;return mk(A.PW*k,A.PH*k,g=>{g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(A.ground,0,0,A.PW*k,A.PH*k);
   for(const ob of A.objs.slice().sort((a,b)=>a.y-b.y)){if(!ob.img||ob.kind==='edgeSign')continue;const [ax,ay]=objAnchor(ob);g.drawImage(ob.img,ax*k,ay*k,ob.img.width*k,ob.img.height*k);}});}
 
