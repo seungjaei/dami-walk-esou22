@@ -8,15 +8,16 @@
 const CAPN=['','1인용','2인용','3인용','4인용'];
 const DECO={};
 for(const c of [1,2,3,4]){
-  DECO['bed'+c]={name:`${CAPN[c]} 침대`,cap:c,kind:'bed',cost:{wood:2+4*c,coins:10*c*c},use:'bed'};
-  DECO['sofa'+c]={name:c===1?'1인용 의자':`${CAPN[c]} 소파`,cap:c,kind:'sofa',cost:{wood:1+3*c,coins:8*c*c}};
-  DECO['table'+c]={name:`${CAPN[c]} 식탁 세트`,cap:c,kind:'table',cost:{wood:2+3*c,stone:c>2?c-2:0,coins:6*c*c}};}
+  // 가구는 자연에서 모은 재료로만 만든다 (나무·돌·풀·꽃), 인원이 많을수록 더 든다
+  DECO['bed'+c]={name:`${CAPN[c]} 침대`,cap:c,kind:'bed',cost:{wood:2+4*c,fiber:2+3*c,flower:c>2?c-1:0},use:'bed'};
+  DECO['sofa'+c]={name:c===1?'1인용 의자':`${CAPN[c]} 소파`,cap:c,kind:'sofa',cost:{wood:1+3*c,fiber:2*c}};
+  DECO['table'+c]={name:`${CAPN[c]} 식탁 세트`,cap:c,kind:'table',cost:{wood:2+3*c,stone:c>1?c-1:0}};}
 Object.assign(DECO,{
-  rug:{name:'동그란 러그',kind:'rug',cost:{coins:20},flat:true},
+  rug:{name:'동그란 러그',kind:'rug',cost:{fiber:6,flower:4},flat:true},
   lamp:{name:'캠핑 랜턴 스탠드',kind:'lamp',cost:{wood:2,stone:2}},
-  plant:{name:'화분',kind:'plant',cost:{stone:1,coins:10}},
+  plant:{name:'화분',kind:'plant',cost:{stone:1,flower:3}},
   shelf:{name:'책장',kind:'shelf',cost:{wood:8}},
-  dogbed:{name:'강아지 방석',kind:'dogbed',cost:{coins:25},flat:true},
+  dogbed:{name:'강아지 방석',kind:'dogbed',cost:{fiber:5,flower:1},flat:true},
   stove:{name:'장작 난로',kind:'stove',cost:{wood:4,stone:6}},
 });
 const ROOM_STYLE={

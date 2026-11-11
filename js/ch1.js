@@ -29,8 +29,7 @@ function glampPrep(A){const [hx,hy]=A.hub;
 // 날마다(구역에 들어올 때): 벤 나무·캔 돌 표시, 공사 터, 초대한 친구
 function ch1ZoneHook(A){const cut=(SV.today.cut=SV.today.cut||{})[A.place]||[];
   A.objs=A.objs.map((o,i)=>{const si=A.staticObjs.indexOf(o);if(si<0||!cut.includes(si))return o;
-    if(o.kind==='rock')return Object.assign({},o,{kind:'pebble',img:spr('pebble',buildPebble),cutDone:true,si});
-    return Object.assign({},o,{kind:'stump',img:spr('stump0',()=>buildObj('stump',0)),cutDone:true,si});});
+    const r=resOfKind(o.kind)||'wood';return Object.assign({},o,{kind:'cut_'+r,img:CUT_IMG[r](),cutDone:true,si});});
   if(A.place==='glamp'){A.dogs=[];const x=A.hub[0]*T+8,y=A.hub[1]*T+34;
     A.objs.push(A.gsite={kind:'gsite',x,y,img:glampImg()});
     if(SV.glamp.st>=3)for(let tx=A.hub[0]-3;tx<=A.hub[0]+3;tx++)for(let ty=A.hub[1];ty<=A.hub[1]+1;ty++)A.solid[ty*A.W+tx]=1;
@@ -69,12 +68,13 @@ function ch1Interact(c,reach){const A=G.area,o=G.pl;if(!A)return;
   if(SV.mq>=1){
     if(CHOP_ZONES.includes(A.place))for(const ob of A.objs)if((ob.kind==='tree'||ob.kind==='pine')&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+4,label:'🪓 나무 베기',act:()=>gather(ob,'wood')});
     if(MINE_ZONES.includes(A.place))for(const ob of A.objs)if(ob.kind==='rock'&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+4,label:'⛏️ 돌 캐기',act:()=>gather(ob,'stone')});}
+  natInteract(c,reach);
   if(A.gsite&&reach(A.gsite.x,A.gsite.y-14,40))c.push({d:Math.hypot(o.x-A.gsite.x,o.y-A.gsite.y)*.5,label:SV.glamp.st>=4?'⛺ 글램핑장':'🔨 글램핑장 짓기',act:openGlamp});}
 function gather(ob,res){if(G.busy)return;const A=G.area,si=A.staticObjs.indexOf(ob);if(si<0)return;
-  const n=res==='wood'?RI(1,2):RI(1,2);G.busy=.7;SV.today.clock+=8;SFX.step();
-  bubble('pl',res==='wood'?pick(['쿵! 쿵!','영차!','나무야 고마워']):pick(['깡! 깡!','단단하다!','영차!']),.9);
+  const n=RI(1,2);G.busy=.7;SV.today.clock+=res==='wood'||res==='stone'?8:4;SFX.step();
+  bubble('pl',{wood:['쿵! 쿵!','영차!','나무야 고마워'],stone:['깡! 깡!','단단하다!','영차!'],fiber:['싹둑싹둑','부드러운 풀이다'],flower:['예쁘다~','향기 좋아']}[res][RI(0,1)],.9);
   setTimeout(()=>{G.busy=0;if(G.area!==A)return;SV[res]=(SV[res]||0)+n;const cut=(SV.today.cut=SV.today.cut||{});(cut[A.place]=cut[A.place]||[]).push(si);
-    const i=A.objs.indexOf(ob);if(i>=0)A.objs[i]=res==='stone'?Object.assign({},ob,{kind:'pebble',img:spr('pebble',buildPebble),cutDone:true}):Object.assign({},ob,{kind:'stump',img:spr('stump0',()=>buildObj('stump',0)),cutDone:true});
+    const i=A.objs.indexOf(ob);if(i>=0)A.objs[i]=Object.assign({},ob,{kind:'cut_'+res,img:CUT_IMG[res](),cutDone:true});
     SFX.pick();toast(`${RES_NAME[res]} +${n} (지금 ${SV[res]}개) · 내일이면 다시 자라요`);if(G.dami)bubble('dami',pick(['멍! 나도 도울래!','킁킁, 나무 냄새~','우와 힘세다!']),1.2);save();},600);}
 
 // ---------- 이장님: 챕터 1 시작 ----------
@@ -122,7 +122,7 @@ function ch1Todo(){if(ch1Ready())return[{ic:'star',t:'📜 이장님께 가 보�
   return[];}
 const resLine=()=>'';
 // 나무·돌은 왼쪽 위 창 아래에 작은 띠로 따로 보여 준다(창 안에 넣으면 글자가 넘침)
-function drawResBar(){if(!(SV.mq>=1)||(G.ov&&G.ov.type!=='deco'))return;const s=`🪵 나무 ${SV.wood||0}  ·  🪨 돌 ${SV.stone||0}`;ctx.font='9px G9';const w=ctx.measureText(s).width+12;panel(4,64,w,17);txt(s,10,68,'#4a3426',9,'left','G9');}
+function drawResBar(){if(!(SV.mq>=1)||(G.ov&&G.ov.type!=='deco'))return;const s=`🪵 ${SV.wood||0}  🪨 ${SV.stone||0}  🌿 ${SV.fiber||0}  🌸 ${SV.flower||0}`;ctx.font='9px G9';const w=ctx.measureText(s).width+12;panel(4,64,w,17);txt(s,10,68,'#4a3426',9,'left','G9');}
 
 // ===== 강아지 대결 (내기) =====
 const DUELS={race:{name:'🏃 달리기 경주',how:'[행동]을 빠르게 연타!'},wait:{name:'🦴 기다려 참기',how:'게이지가 차오르면 [행동]으로 진정!'},fris:{name:'🥏 원반 한 번에 물기',how:'초록 칸에서 [행동]!'}};

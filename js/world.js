@@ -2,7 +2,7 @@
 // ===== 저장 데이터 · 하루 일정 · 지역(집/마을/산책길) 생성 =====
 // 멀티플레이 대비: SV = 이 플레이어 저장본(JSON 하나). 나중에 Supabase에 그대로 올릴 수 있게 순수 데이터만 둔다.
 const store={get(k,d){try{const v=localStorage.getItem('dami3_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('dami3_'+k,JSON.stringify(v));}catch(e){}}};
-const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false,sick:0,bathN:0,ch:1,mq:0,tools:0,wood:0,stone:0,glamp:{st:0,style:null}};
+const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false,sick:0,bathN:0,ch:1,mq:0,tools:0,wood:0,stone:0,fiber:0,flower:0,finds:{},glamp:{st:0,style:null}};
 let SV=JSON.parse(JSON.stringify(DEF));
 function loadSave(cloud){const s=cloud||store.get(saveKey(),null);SV=Object.assign(JSON.parse(JSON.stringify(DEF)),s||{});muted=SV.muted;delete SV.solo;delete SV.mp;delete SV.room;delete SV.roomNick;delete SV.pid;}
 function save(force){if(isMP())SV._t=Date.now();store.set(saveKey(),SV);cloudSave(force);}
@@ -136,6 +136,7 @@ function genTown(){
   A.npcs=[];A.birds=[];A.qitems=[];A.objs=A.staticObjs.slice();A.solid=A.baseSolid.slice();
   const w=WALKERS[SV.today.townWalker];addWalker(A,w,{x:24*T,y:20.5*T},null);
   for(let i=0;i<5;i++)A.birds.push({x:R(18,27)*T,y:R(20,27)*T,hop:R(0,2),fly:0,vx:0,vy:0,face:1,alive:true});
+  townHook(A);
   return A;
 }
 function addWalker(A,w,pos,route){

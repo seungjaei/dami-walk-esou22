@@ -137,11 +137,11 @@ function outdoorAI(dt){
       if(d.t<=0){f.alive=false;const n=++SV.today.ate;addSt('hunger',5);SFX.eat();bubble('dami','냠… (몰래 먹었다)',1.5);d.state='idle';
         if(n===4)toast(`주워 먹은 게 ${n}개… 담이 배가 꾸륵꾸륵해요`);else if(n===6)toast('하나만 더 먹으면 내일 배탈 나요! [부르기]로 막아 주세요');else if(n===SICK_AT){toast('주워 먹은 게 7개! 내일 아침 담이 배가 아플 것 같아요…');logDay('길에서 이것저것 너무 많이 주워 먹었다…');}}return;}
     case 'sniff':{d.t-=dt;const s=d.target;if(Math.hypot(d.x-s.x,d.y-s.y)>48){d.state='idle';return;}if(Math.random()<dt*3)G.parts.push({x:d.x+d.face*8,y:d.y-6,vx:R(-4,4),vy:-10,t:.7,note:true});
-      if(d.t<=0){s.sniff.done=true;addSt('mood',8);gainAff(1);SFX.sniff();bubble('dami','킁킁… 좋은 냄새♪',1.6,'#3d7a30');d.state='idle';}return;}
+      if(d.t<=0){s.sniff.done=true;addSt('mood',8);gainAff(1);SFX.sniff();bubble('dami','킁킁… 좋은 냄새♪',1.6,'#3d7a30');d.state='idle';onSniffDone();}return;}
     case 'dig':{d.t-=dt;d.dir='side';if(Math.random()<dt*10)G.parts.push({x:d.x+d.face*6,y:d.y,vx:R(-30,30)-d.face*20,vy:R(-40,-20),t:.5,g:120,dirt:true});
       const g0=d.target;if(Math.hypot(d.x-g0.x,d.y-g0.y)>26){d.state='idle';return;}
       if(d.t<=0){g0.found=true;const tid=pick(DIG_TABLE[A.place]||DIG_TABLE.park);const tr=TREASURES[tid];SV.treasure[tid]=(SV.treasure[tid]||0)+1;if(tr.coin)addCoins(tr.coin);gainXP(10);gainAff(1);SFX.clover();
-        for(let k=0;k<10;k++)G.parts.push({x:g0.x,y:g0.y-4,vx:R(-30,30),vy:R(-50,-20),t:.8,g:60,spark:true});bubble('dami',`${tr.name} 찾았다!`,2,'#c0602a');logDay(`담이가 땅을 파서 '${tr.name}'을(를) 찾았다!`);SV.today.dug.push(tid);d.state='idle';}return;}
+        for(let k=0;k<10;k++)G.parts.push({x:g0.x,y:g0.y-4,vx:R(-30,30),vy:R(-50,-20),t:.8,g:60,spark:true});bubble('dami',`${tr.name} 찾았다!`,2,'#c0602a');logDay(`담이가 땅을 파서 '${tr.name}'을(를) 찾았다!`);SV.today.dug.push(tid);d.state='idle';onDigDone();}return;}
     case 'food':{const f=d.target;if(!f.alive||f.ig>0){d.state='idle';return;}d.pull=.24;d.anim+=dt*6;if(stepTo(d,f.x,f.y+2,66,dt)<6){d.state='eat';d.t=EAT_T;d.tot=EAT_T;}return;}
     case 'toSniff':{const s=d.target;d.pull=.12;d.sT=(d.sT||0)+dt;const r=stepTo(d,s.x,s.y+4,48,dt),near=Math.hypot(d.x-s.x,d.y-s.y);if(r<9||near<28||(d.sT>1.2&&near<46)){d.state='sniff';d.t=2;d.tot=2;d.sT=0;}return;}
     case 'toDig':{const g0=d.target;d.pull=.2;d.sT=(d.sT||0)+dt;const r=stepTo(d,g0.x,g0.y+2,50,dt);if(r<6||(d.sT>1.2&&r<20)){d.state='dig';d.t=2.2;d.tot=2.2;d.sT=0;}return;}

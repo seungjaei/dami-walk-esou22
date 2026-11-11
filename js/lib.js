@@ -10,9 +10,9 @@ function vnoise(x,y,s){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u
 const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
 const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
 // ---------- 소리: 부드러운 칩튠 ----------
-let AC=null,MG=null,muted=false;
+let AC=null,MG=null,muted=false,TONE_CH='s';   // TONE_CH: 'm' 음악 / 's' 활동 소리(효과음) → 메뉴에서 따로 크기 조절
 function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.55;const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3200;MG.connect(lp).connect(AC.destination);}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC;}
-function tone(f,d=.15,type='triangle',v=.08,at=0,f2=null,att=.01){const a=ac();if(!a||muted)return;const t=a.currentTime+at,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(MG);o.start(t);o.stop(t+d+.05);}
+function tone(f,d=.15,type='triangle',v=.08,at=0,f2=null,att=.01){const a=ac();if(!a||muted)return;const vm=typeof VOL!=='undefined'?VOL[TONE_CH]:1;if(!(vm>0))return;v*=vm;const t=a.currentTime+at,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(MG);o.start(t);o.stop(t+d+.05);}
 const mid=n=>440*Math.pow(2,(n-69)/12);
 const SFX={
   call(){tone(mid(76),.18,'sine',.09);tone(mid(81),.3,'sine',.09,.14);},
@@ -35,12 +35,12 @@ const SFX={
 const CH=[[48,64,67,71,76],[45,60,64,67,72],[41,57,60,64,69],[43,59,62,64,71]];
 const MEL=[76,0,79,0,81,79,76,0, 72,0,74,76,74,0,0,0, 72,0,74,0,76,74,72,69, 71,0,72,74,0,0,0,0];
 let musicOn=false,mStep=0,mNext=0;
-function musicTick(){const a=AC;if(!a||muted||!musicOn)return;const spb=60/80/2;if(mNext<a.currentTime)mNext=a.currentTime+.05;
+function musicTick(){const a=AC;if(!a||muted||!musicOn)return;const spb=60/80/2;if(mNext<a.currentTime)mNext=a.currentTime+.05;TONE_CH='m';try{
   while(mNext<a.currentTime+.25){const bar=Math.floor(mStep/8)%4,c=CH[bar],st=mStep%8,at=mNext-a.currentTime;
     if(st===0)tone(mid(c[0]),spb*7,'sine',.05,at,null,.05);
     tone(mid(c[1+(st%4)]),spb*1.8,'triangle',.022,at,null,.02);
     const m=MEL[mStep%32];if(m)tone(mid(m),spb*2.2,'sine',.035,at,null,.03);
-    mStep++;mNext+=spb;}}
+    mStep++;mNext+=spb;}}finally{TONE_CH='s';}}
 setInterval(musicTick,60);
 function mk(w,h,fn){const c=document.createElement('canvas');c.width=Math.ceil(w);c.height=Math.ceil(h);const g=c.getContext('2d',{willReadFrequently:true});fn(g);return c;}
 function ell(g,cx,cy,rx,ry,col){if(rx<=0||ry<=0)return;g.fillStyle=col;const y0=Math.ceil(-ry),y1=Math.floor(ry);for(let y=y0;y<=y1;y++){const k=1-(y*y)/(ry*ry);if(k<0)continue;const hw=rx*Math.sqrt(k);g.fillRect(Math.round(cx-hw),Math.round(cy+y),Math.max(1,Math.round(hw*2)),1);}}
