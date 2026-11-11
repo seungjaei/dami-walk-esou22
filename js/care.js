@@ -17,8 +17,8 @@ function careTick(dt){const A=G.area,d=G.dami,S=st(),gm=dt*MIN_PER_SEC;
     if(A.outdoor&&!A.drive&&A.place!=='arena'){if(S.pee>=85)startPotty('pee');else if(S.poop>=90)startPotty('poop');}
     else if(!A.outdoor&&(S.pee>=100||S.poop>=100))startPotty(S.pee>=100?'pee':'poop',true);}
   // 굶기면 삐짐: 배고프고 목마른 채로 두면 혼자 집에 가서 하루 종일 쉰다
-  if(!SV.today.sulk&&S.hunger<6&&S.thirst<6){SV.today.sulk=1;addSt('mood',-30);logDay('밥도 물도 못 먹어서 담이가 삐져 버렸다… 혼자 집에 가서 하루 종일 쉬었다.');
-    openDialog({name:SV.dogName||'담이',id:'dami',lines:['낑… 배고프고 목말라요…','(담이가 혼자 집으로 가 버렸어요. 오늘은 삐져서 아무것도 안 한대요)','밥이랑 물은 꼭 챙겨 주세요!'],cb:()=>{enterArea('home',{});G.dami.state='sleep';G.dami.t=9999;}});return;}
+  if(!SV.today.hungryPen&&S.hunger<6&&S.thirst<6){SV.today.hungryPen=1;addSt('mood',-15);const lost=loseFinds();logDay('밥도 물도 못 먹어서 담이가 삐졌다… '+lostText(lost));
+    openDialog({name:SV.dogName||'담이',id:'dami',lines:['낑… 배고프고 목말라요…','(담이가 삐져서 가방을 뒤적이다가 물건을 떨어뜨렸어요)',lostText(lost),'밥이랑 물은 꼭 챙겨 주세요!']});return;}
   // 졸림 → 새벽 1시가 넘으면 기절, 장비를 잃는다
   if(SV.today.clock>=25*60&&!SV.today.fainted){SV.today.fainted=1;faint();return;}
   // 비·눈 오는 날 밖: 나가자마자 젖고 흙탕물
@@ -34,10 +34,12 @@ function careTick(dt){const A=G.area,d=G.dami,S=st(),gm=dt*MIN_PER_SEC;
 const wetDay=()=>SV.today.events.includes('rain')||SV.today.events.includes('snow');
 function growl(){tone(110,.35,'sawtooth',.03,0,90);tone(98,.3,'sawtooth',.025,.3,80);}
 function dogMood(id){const M=(SV.today.dogMood=SV.today.dogMood||{});if(!M[id]){const r=rnd(),f=SV.friends[id]||0;M[id]=r<.18-f*.02?'scared':r<.42-f*.04?'wary':'happy';}return M[id];}
-function faint(){const lost=[];if(SV.eq&&SV.acc[SV.eq]){lost.push(ACCS[SV.eq]?ACCS[SV.eq].name:'장식');delete SV.acc[SV.eq];SV.eq=null;}
-  const tl=SV.tool||{};const best=['axe','pick','sickle'].sort((a,b)=>(tl[b]|0)-(tl[a]|0))[0];if((tl[best]|0)>1){tl[best]--;lost.push(`${TOOLN[best]} 한 단계`);}
-  logDay('너무 졸려서 쓰러져 버렸다… '+(lost.length?lost.join(', ')+'을(를) 잃어버렸다.':''));
-  openDialog({name:'😵',id:'dami',lines:['너무 졸려서 그 자리에서 쓰러져 버렸어요…',lost.length?`정신을 차려 보니 ${lost.join(', ')}을(를) 잃어버렸어요.`:'다행히 잃어버린 건 없어요.','다음부터는 새벽 1시 전에 꼭 자요!'],cb:()=>{endDay();}});}
+function faint(){const lost=loseFinds();logDay('너무 졸려서 쓰러져 버렸다… '+lostText(lost));
+  openDialog({name:'😵',id:'dami',lines:['너무 졸려서 그 자리에서 쓰러져 버렸어요…','정신을 차려 보니 '+lostText(lost),'다음부터는 새벽 1시 전에 꼭 자요!'],cb:()=>{endDay();}});}
+// 벌칙: 가지고 있는 팔 물건(담이가 찾은 것)을 무작위로 2~4개 잃어버린다. 없으면 잃는 것 없음
+function loseFinds(){const F=SV.finds||{},lost={};let n=RI(2,4);
+  for(let k=0;k<20&&n>0;k++){const own=Object.keys(F).filter(id=>F[id]>0&&FINDS[id]);if(!own.length)break;const id=pick(own);F[id]--;lost[id]=(lost[id]||0)+1;n--;}save();return lost;}
+function lostText(lost){const L=Object.entries(lost);return L.length?L.map(([id,v])=>`${FINDS[id].ic}${FINDS[id].name} ${v}개`).join(', ')+'를 잃어버렸어요.':'다행히 잃어버린 물건은 없어요.';}
 
 // ---------- 쉬·응아 ----------
 function startPotty(kind,indoor){const d=G.dami;d.state='potty';d.pk=kind;d.t=1.8;d.indoor=!!indoor;bubble('dami',kind==='pee'?(indoor?'앗… 못 참겠어요!':'쉬~'):(indoor?'끄응… 실수할 것 같아요!':'끄응… 응아~'),1.6,'#7a5a3a');}
@@ -58,8 +60,7 @@ const _updDami0=updDami;updDami=function(dt){const d=G.dami;
 const _enterArea0=enterArea;enterArea=function(kind,arg){const A0=G&&G.area;
   // 삐진 날·기분이 너무 나쁜 날은 집 밖으로 안 나간다
   if(A0&&(A0.kind==='home')&&kind!=='home'&&kind!=='house'){
-    if(SV.today.sulk){toast('담이가 삐져서 오늘은 안 나간대요… 내일 다시 산책해요');SFX.soft();G.pl.y-=10;return;}
-    if(st().mood<12){toast('담이가 기분이 안 좋아서 안 나온대요… 쓰다듬고 놀아 주세요');bubble('dami','안 나갈래…',1.6,'#3a5a9a');SFX.soft();G.pl.y-=10;return;}}
+    if(st().mood<12&&!SV.today.moodPen){SV.today.moodPen=1;const lost=loseFinds();setTimeout(()=>toast('담이가 기분이 안 좋아서 투덜투덜… '+lostText(lost)),500);logDay('담이 기분이 안 좋아서 투덜대며 나갔다. '+lostText(lost));}}
   const left=A0&&A0.outdoor&&A0.objs.some(o=>o.kind==='poop');
   _enterArea0(kind,arg);G.wetIn=0;if(G.dami)G.dami.wet=G.dami.wet&&wetDay();
   if(left){SV.manner=(SV.manner||0)-1;addSt('mood',-2);setTimeout(()=>toast('앗, 응아를 안 치우고 왔어요… 이웃들이 속상해해요'),400);}

@@ -14,7 +14,7 @@ const STAT_TALK=[
   ['me','🍙','나(주인)',v=>v<25?'나도 배고파…':v<60?'괜찮아':'든든해',false,true]];
 const statVal=k=>{const S=st();if(k==='potty')return Math.max(S.pee||0,S.poop||0);return S[k]==null?70:S[k];};
 function urgentList(){const L=[],S=st(),c=SV.today.clock;
-  if(SV.sick)L.push(['🤒','배 아파… 병원 가요']);if(SV.today.sulk)L.push(['😤','삐져서 오늘은 집에 있을래']);
+  if(SV.sick)L.push(['🤒','배 아파… 병원 가요']);
   if(statVal('hunger')<30)L.push(['🍖','배고파!']);if(statVal('thirst')<30)L.push(['💧','목말라!']);
   if(statVal('potty')>80)L.push(['💩','화장실 마려워!']);if(statVal('mood')<30)L.push(['💗','심심해… 놀아줘']);if(statVal('clean')<25)L.push(['🛁','찝찝해…']);
   if((S.me==null?70:S.me)<25)L.push(['🍙','(나) 배고파… 편의점']);
