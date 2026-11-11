@@ -31,16 +31,44 @@ const SFX={
   clear(){[72,76,79,84,79,84,88].forEach((n,i)=>tone(mid(n),.45,'triangle',.06,i*.13));},
   soft(){[76,74,72].forEach((n,i)=>tone(mid(n),.5,'sine',.05,i*.25));}
 };
-// 배경음: Cmaj7-Am7-Fmaj7-G6 느린 아르페지오
-const CH=[[48,64,67,71,76],[45,60,64,67,72],[41,57,60,64,69],[43,59,62,64,71]];
-const MEL=[76,0,79,0,81,79,76,0, 72,0,74,76,74,0,0,0, 72,0,74,0,76,74,72,69, 71,0,72,74,0,0,0,0];
-let musicOn=false,mStep=0,mNext=0;
-function musicTick(){const a=AC;if(!a||muted||!musicOn)return;const spb=60/80/2;if(mNext<a.currentTime)mNext=a.currentTime+.05;TONE_CH='m';try{
-  while(mNext<a.currentTime+.25){const bar=Math.floor(mStep/8)%4,c=CH[bar],st=mStep%8,at=mNext-a.currentTime;
-    if(st===0)tone(mid(c[0]),spb*7,'sine',.05,at,null,.05);
+// 배경음: 장소·상황마다 다른 곡 (직접 만든 짧은 칩튠 루프)
+// ch: 4마디 화음 [베이스, 아르페지오 4음], mel: 32칸 멜로디(0=쉼표), bpm: 빠르기
+const TRACKS={
+  home:{bpm:80,lead:'sine',ch:[[48,64,67,71,76],[45,60,64,67,72],[41,57,60,64,69],[43,59,62,64,71]],
+    mel:[76,0,79,0,81,79,76,0, 72,0,74,76,74,0,0,0, 72,0,74,0,76,74,72,69, 71,0,72,74,0,0,0,0]},
+  town:{bpm:96,lead:'triangle',ch:[[41,57,60,65,69],[48,55,60,64,67],[50,57,62,65,69],[46,58,62,65,70]],
+    mel:[72,0,72,74,77,0,74,72, 72,0,67,0,69,72,0,0, 74,0,77,0,76,74,72,0, 70,0,72,74,72,0,0,0]},
+  forest:{bpm:72,lead:'sine',ch:[[45,57,60,64,69],[41,57,60,65,69],[48,55,60,64,67],[43,55,59,62,67]],
+    mel:[69,0,0,72,0,74,0,0, 72,0,69,0,67,0,0,0, 64,0,67,0,69,0,72,0, 71,0,0,67,0,0,0,0]},
+  beach:{bpm:88,lead:'triangle',ch:[[50,62,66,69,74],[43,59,62,67,71],[47,59,62,66,71],[45,61,64,69,73]],
+    mel:[74,0,76,78,0,81,0,0, 79,0,78,0,74,0,0,0, 71,0,74,0,76,78,0,76, 73,0,74,76,0,0,0,0]},
+  park:{bpm:100,lead:'triangle',ch:[[43,59,62,67,71],[48,60,64,67,72],[40,59,64,67,71],[50,62,66,69,74]],
+    mel:[79,0,79,81,83,0,79,0, 76,0,79,0,81,0,0,0, 83,0,81,79,76,0,79,0, 78,0,79,81,79,0,0,0]},
+  glamp:{bpm:76,lead:'triangle',ch:[[40,55,59,64,67],[48,55,60,64,67],[43,55,59,62,67],[50,57,62,66,69]],
+    mel:[71,0,74,0,76,0,74,71, 72,0,0,0,71,69,67,0, 67,0,71,0,74,0,76,0, 74,0,72,71,69,0,0,0]},
+  night:{bpm:64,lead:'sine',ch:[[50,60,65,69,72],[43,59,62,65,71],[48,59,64,67,71],[45,60,64,67,72]],
+    mel:[77,0,0,0,76,0,0,0, 74,0,0,72,0,0,0,0, 71,0,0,0,72,0,74,0, 72,0,0,0,0,0,0,0]},
+  drive:{bpm:120,lead:'square',bass:2,ch:[[48,60,64,67,72],[43,59,62,67,71],[45,60,64,69,72],[41,57,60,65,69]],
+    mel:[72,74,76,0,79,0,76,74, 74,0,71,74,79,0,0,0, 76,0,72,76,81,0,79,76, 77,76,74,0,72,0,0,0]},
+  arena:{bpm:112,lead:'square',bass:2,ch:[[46,58,62,65,70],[41,57,60,65,69],[43,55,58,62,67],[39,55,58,63,67]],
+    mel:[70,0,70,74,77,0,0,0, 77,0,76,74,72,0,0,0, 74,0,74,77,82,0,0,0, 79,77,75,74,75,0,0,0]},
+  game:{bpm:132,lead:'square',bass:2,ch:[[48,60,64,67,72],[45,60,64,69,72],[41,57,60,65,69],[43,59,62,67,71]],
+    mel:[76,0,79,76,84,0,79,0, 76,0,72,76,81,0,0,0, 77,0,81,77,84,0,81,0, 79,77,76,74,72,0,0,0]},
+};
+const ZONE_TRACK={mountain:'forest',camp:'forest',meadow:'forest',summit:'forest',glamp:'glamp',beach:'beach',river:'beach',park:'park',market:'park'};
+function musicTrack(){if(typeof scene==='undefined'||scene!=='game'||typeof G==='undefined'||!G)return 'home';
+  const ov=G.ov&&G.ov.type;if(ov==='duel'||ov==='agil'||ov==='fris')return 'game';
+  const A=G.area;if(!A)return 'home';if(A.drive)return 'drive';if(A.place==='arena')return 'arena';if(A.glampin)return 'glamp';
+  if(SV&&SV.today&&SV.today.clock>=19*60)return 'night';
+  if(A.kind==='home'||A.kind==='house')return 'home';if(A.kind==='town')return 'town';return ZONE_TRACK[A.place]||'town';}
+let musicOn=false,mStep=0,mNext=0,mTrack='home';
+function musicTick(){const a=AC;if(!a||muted||!musicOn)return;const want=musicTrack();if(want!==mTrack&&mStep%8===0){mTrack=want;mStep=0;}
+  const TR=TRACKS[mTrack]||TRACKS.home,spb=60/TR.bpm/2,lv=TR.lead==='square'?.5:1;if(mNext<a.currentTime)mNext=a.currentTime+.05;TONE_CH='m';try{
+  while(mNext<a.currentTime+.25){const bar=Math.floor(mStep/8)%4,c=TR.ch[bar],st=mStep%8,at=mNext-a.currentTime;
+    if(st===0)tone(mid(c[0]),spb*7,'sine',.05,at,null,.05);else if(TR.bass&&st%TR.bass===0)tone(mid(c[0]),spb*.9,'triangle',.035,at,null,.01);
     tone(mid(c[1+(st%4)]),spb*1.8,'triangle',.022,at,null,.02);
-    const m=MEL[mStep%32];if(m)tone(mid(m),spb*2.2,'sine',.035,at,null,.03);
-    mStep++;mNext+=spb;}}finally{TONE_CH='s';}}
+    const m=TR.mel[mStep%32];if(m)tone(mid(m),spb*2.2,TR.lead,.035*lv,at,null,.03);
+    mStep++;mNext+=spb;if(want!==mTrack&&mStep%8===0)break;}}finally{TONE_CH='s';}}
 setInterval(musicTick,60);
 function mk(w,h,fn){const c=document.createElement('canvas');c.width=Math.ceil(w);c.height=Math.ceil(h);const g=c.getContext('2d',{willReadFrequently:true});fn(g);return c;}
 function ell(g,cx,cy,rx,ry,col){if(rx<=0||ry<=0)return;g.fillStyle=col;const y0=Math.ceil(-ry),y1=Math.floor(ry);for(let y=y0;y<=y1;y++){const k=1-(y*y)/(ry*ry);if(k<0)continue;const hw=rx*Math.sqrt(k);g.fillRect(Math.round(cx-hw),Math.round(cy+y),Math.max(1,Math.round(hw*2)),1);}}

@@ -52,3 +52,5 @@ glampRoomAfter=function(A){_glampRoomAfter(A);if(isMP())setTimeout(mgFetch,50);}
 // 멀티는 숙소 3단계가 서버 기준
 const _enterGlampRoom=enterGlampRoom;enterGlampRoom=function(){if(isMP()&&!GMP.loaded&&!GMP.fail){mgFetch().then(()=>_enterGlampRoom());return;}_enterGlampRoom();};
 const _mpPlay=mpPlay;mpPlay=function(code){GMP.loaded=false;GMP.pool={};GMP.need={};GMP.ver=0;return _mpPlay(code);};
+// 다 지어졌을 때 메뉴를 보고 있던 친구도, 메뉴를 닫는 순간 챕터 1 완료를 받는다
+setInterval(()=>{if(isMP()&&GMP.loaded&&SV.glamp&&SV.glamp.st>=GSTAGES.length&&SV.mq===1&&scene==='game'&&G&&!G.ov)ch1Clear();},1500);
