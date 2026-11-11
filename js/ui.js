@@ -51,7 +51,9 @@ function onKey(k){
   if(scene!=='game')return;
   const ov=G.ov;
   if(ov){ovKey(ov,k,OK||CALL,BACK);return;}
-  if(G.play||G.busy)return;
+  if(G.play)return;
+  if(BACK||k==='KeyP'){openPause();return;}
+  if(G.busy)return;
   if(OK)interact();else if(CALL){if(G.area.outdoor)call();else interact();}
   else if(k==='KeyT'||k==='Tab')G.ov={type:'todo'};else if(k==='KeyM')openMap(false);else if(k==='KeyF')G.ov={type:'dex',tab:0};
   else if(BACK||k==='KeyP')openPause();
@@ -93,7 +95,7 @@ function openDialog(o){const d=Object.assign({type:'dlg',i:0,n:0,sel:0},o);if(G.
 function openMenu(o){G.ov=Object.assign({type:'menu',sel:0},o);}
 function closeOv(){G.ov=null;}
 async function saveNow(){closeOv();store.set(saveKey(),SV);if(!AUTH.user){toast('이 기기에 저장했어요 💾');SFX.pick();return;}toast('저장하는 중…');AUTH.saving=false;const ok=await cloudSave(true);toast(ok?'저장했어요! ☁️':'인터넷 문제로 이 기기에만 저장했어요');if(ok)SFX.pick();}
-function openPause(){openMenu({title:'메뉴',items:[{label:'계속하기',fn:closeOv},{label:'저장하기',fn:saveNow},{label:'오늘 할 일',fn:()=>{G.ov={type:'todo'};}},...(isMP()?[{label:`같이 하기 · 방 ${MP.code}`,fn:openRoomMenu}]:[]),{label:'친구 도감 · 보물 상자',fn:()=>{G.ov={type:'dex',tab:0};}},{label:muted?'소리 켜기':'소리 끄기',fn:()=>{muted=!muted;SV.muted=muted;save();closeOv();}},{label:'저장하고 타이틀로',fn:()=>{save(true);G.ov=null;scene='title';musicOn=false;showTouch(false);}}].concat(AUTH.user?[{label:'로그아웃',fn:()=>{save(true);logout();}}]:[])});}
+function openPause(){openMenu({title:'메뉴',items:[{label:'계속하기',fn:closeOv},{label:'저장하기',fn:saveNow},{label:'오늘 할 일',fn:()=>{G.ov={type:'todo'};}},{label:'🆘 끼임 탈출 (가까운 길로)',fn:()=>{closeOv();unstuck(true);}},{label:'🏠 집으로 돌아가기',fn:()=>{closeOv();enterArea('home',{});}},...(isMP()?[{label:`같이 하기 · 방 ${MP.code}`,fn:openRoomMenu}]:[]),{label:'친구 도감 · 보물 상자',fn:()=>{G.ov={type:'dex',tab:0};}},{label:muted?'소리 켜기':'소리 끄기',fn:()=>{muted=!muted;SV.muted=muted;save();closeOv();}},{label:'저장하고 타이틀로',fn:()=>{save(true);G.ov=null;scene='title';musicOn=false;showTouch(false);}}].concat(AUTH.user?[{label:'로그아웃',fn:()=>{save(true);logout();}}]:[])});}
 const priceOf=(it,rare)=>rare?it.price:Math.round(it.price*(SV.today.events.includes('sale')?.7:1));
 function openShop(rare){const list=rare?RARE_SHOP:SHOP;const items=list.map(it=>{const owned=(it.acc&&SV.acc[it.id])||(it.once&&SV[it.id]);const locked=(it.lv||1)>SV.lv;const pr=priceOf(it,rare);
   return{label:it.name+(owned?' (보유)':''),right:locked?`Lv${it.lv}`:`${pr}`,dis:owned||locked,coin:!locked,desc:it.desc,fn:()=>buy(it,rare)};});
@@ -244,7 +246,7 @@ function drawHUD(t){
   // 오늘 할 일
   const Ls=isTouch?[]:todoList().filter(l=>!l.ok&&(c>=15*60?true:!l.eve)).slice(0,6);
   if(Ls.length){const w=150,h=Ls.length*11+18;panel(VW-w-4,4,w,h);txt('오늘 할 일',VW-w+4,8,'#c0602a',9,'left','G11B');
-    Ls.forEach((l,i)=>{const y=20+i*11;drawItemIcon(l.ic,VW-w+3,y-1);txt(l.t.length>10?l.t.slice(0,10)+'…':l.t,VW-w+16,y,l.ready?'#3d8a3a':'#4a3426',9,'left','G9');if(l.sub)txt(l.sub.slice(0,8),VW-10,y,'#9a7a5a',9,'right','G9');});}
+    Ls.forEach((l,i)=>{const y=20+i*11;drawItemIcon(l.ic,VW-w+3,y-1);const sub=l.sub?l.sub.slice(0,8):'';ctx.font='9px G9';const sw=sub?ctx.measureText(sub).width+5:0;let tt=l.t;while(tt.length>1&&ctx.measureText(tt).width>w-22-sw)tt=tt.slice(0,-2)+'…';txt(tt,VW-w+16,y,l.ready?'#3d8a3a':'#4a3426',9,'left','G9');if(sub)txt(sub,VW-10,y,'#9a7a5a',9,'right','G9');});}
   // 퀘스트 화살표
   const tg=questTarget();if(tg){const gx=tg.x-G.cam.x,gy=tg.y-G.cam.y;if(gx<0||gx>VW||gy<0||gy>VH){const a=Math.atan2(gy-VH/2,gx-VW/2),ax=clamp(VW/2+Math.cos(a)*220,16,VW-16),ay=clamp(VH/2+Math.sin(a)*120,70,VH-30),b=Math.sin(t*5)*2;
     ctx.save();ctx.translate(ax+Math.cos(a)*b,ay+Math.sin(a)*b);ctx.rotate(a);ctx.fillStyle='#4a2e1e';ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-7);ctx.lineTo(-2,0);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.fillStyle=tg.col;ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(-4,-5);ctx.lineTo(-1,0);ctx.lineTo(-4,5);ctx.closePath();ctx.fill();ctx.restore();
@@ -373,7 +375,7 @@ function drawDiary(t){const D=G.diary;
 let last=performance.now();
 function frame(now){if(isTouch)syncTouch();const dt=Math.min(.05,(now-last)/1000);last=now;sceneT+=dt;const t=now/1000;
   ctx.setTransform(S,0,0,S,0,0);ctx.imageSmoothingEnabled=false;
-  try{netTick(dt);if(scene==='login')drawTitle(t,true);else if(scene==='title')drawTitle(t);else if(scene==='game'){if(!G.ov||['bath','fris','agil'].includes(G.ov.type)){if(!G.ov)update(dt);else if(G.ov.type==='fris')updFris(dt);else if(G.ov.type==='agil')updAgil(dt);}else{G.fade=Math.max(0,G.fade-dt*2);}drawGame(t);}else if(scene==='diary')drawDiary(t);}
+  try{netTick(dt);if(scene==='login')drawTitle(t,true);else if(scene==='title')drawTitle(t);else if(scene==='game'){if(!G.ov||['bath','fris','agil'].includes(G.ov.type)){if(!G.ov){update(dt);if(G.area&&!G.play&&!freeAt(G.pl.x,G.pl.y)){G.stuckT=(G.stuckT||0)+dt;if(G.stuckT>1.2)unstuck(false);}else G.stuckT=0;}else if(G.ov.type==='fris')updFris(dt);else if(G.ov.type==='agil')updAgil(dt);}else{G.fade=Math.max(0,G.fade-dt*2);}drawGame(t);}else if(scene==='diary')drawDiary(t);}
   catch(e){console.error(e);}
   requestAnimationFrame(frame);}
 // ---------- 시작: 로그인 → 저장 불러오기 → 타이틀 ----------

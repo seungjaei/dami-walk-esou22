@@ -157,7 +157,8 @@ function zoneStatic(id){
     for(const [p,q] of [[a,mid],[mid,b]]){let [x,y]=p;const hf=rnd()<.5;if(hf){while(x!==q[0]){pts.push([x,y]);x+=Math.sign(q[0]-x);}while(y!==q[1]){pts.push([x,y]);y+=Math.sign(q[1]-y);}}else{while(y!==q[1]){pts.push([x,y]);y+=Math.sign(q[1]-y);}while(x!==q[0]){pts.push([x,y]);x+=Math.sign(q[0]-x);}}}
     pts.push(b.slice());return pts;};
   const dirs=['N','S','E','W'].filter(d=>zoneAt(id,d));
-  for(const d of dirs)lines.push(carve(edgeOf(id,d).slice(),hub));
+  // 출입구에서는 먼저 안쪽으로 곧게 5칸 들어온 뒤 꺾는다(가장자리를 따라 옆으로 가면 들어오자마자 물·덤불에 갇힘)
+  for(const d of dirs){const e=edgeOf(id,d),D=DIRS[d],stub=[];for(let k=0;k<=5;k++)stub.push([e[0]-D[0]*k,e[1]-D[1]*k]);lines.push(stub.concat(carve(stub[5].slice(),hub)));}
   // 한 방향만 열린 구역은 끝에 둘레길 하나 더
   if(dirs.length<2)lines.push(carve(hub,[RI(8,W-9),RI(th.river?10:5,H-6)]));
   const C=()=>{const c=document.createElement('canvas');c.width=PW;c.height=PH;const g=c.getContext('2d');g.fillStyle='#fff';return [c,g];};

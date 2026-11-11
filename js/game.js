@@ -11,7 +11,7 @@ function enterArea(kind,arg){
   let A;
   if(kind==='home')A=genRoom('home');else if(kind==='house')A=genRoom(arg.id);else if(kind==='town')A=genTown();else A=genZone(arg.id);
   G.area=A;let sp=A.spawn;if(arg&&arg.x!==undefined)sp=arg;else if(arg&&arg.from)sp=spawnAt(kind==='town'?'town':arg.id,arg.from);
-  G.pl.x=sp.x;G.pl.y=sp.y;G.pl.dir=arg&&arg.from?({N:'down',S:'up',E:'side',W:'side'})[arg.from]:kind==='town'?'down':'up';if(arg&&arg.from)G.pl.face=arg.from==='E'?-1:1;
+  {const f=freeNear(sp.x,sp.y)||sp;G.pl.x=f.x;G.pl.y=f.y;}G.stuckT=0;G.pl.dir=arg&&arg.from?({N:'down',S:'up',E:'side',W:'side'})[arg.from]:kind==='town'?'down':'up';if(arg&&arg.from)G.pl.face=arg.from==='E'?-1:1;
   const d=G.dami;d.x=G.pl.x+(A.outdoor?14:10)*(G.pl.face||1);d.y=G.pl.y+4;if(!freeAt(d.x,d.y)){d.x=G.pl.x;d.y=G.pl.y;}d.state='idle';G.ball=null;G.play=null;G.busy=0;
   if(arg&&arg.wake&&A.cushion){d.x=A.cushion.x;d.y=A.cushion.y-2;d.state='sleep';d.t=2;}
   G.bubbles=[];G.parts=[];G.fade=1;G.exitLock=true;
@@ -33,6 +33,12 @@ function showNews(){const E=SV.today.events;if(SV.today.newsShown)return;SV.toda
 // ---------- 충돌 ----------
 function solidPx(x,y){const A=G.area,tx=Math.floor(x/T),ty=Math.floor(y/T);if(tx<0||ty<0||tx>=A.W||ty>=A.H)return true;return A.solid[ty*A.W+tx]===1;}
 function freeAt(x,y,hw=4,hh=2){return !solidPx(x-hw,y-hh)&&!solidPx(x+hw,y-hh)&&!solidPx(x-hw,y+hh)&&!solidPx(x+hw,y+hh);}
+// 끼임 탈출: 가까운 곳부터 빙글빙글 돌며 걸을 수 있는 자리를 찾는다
+function freeNear(x,y){if(freeAt(x,y))return{x,y};for(let r=4;r<=T*14;r+=4)for(let a=0;a<24;a++){const q=a/24*Math.PI*2,nx=x+Math.cos(q)*r,ny=y+Math.sin(q)*r;if(freeAt(nx,ny)&&freeAt(nx,ny,6,3))return{x:nx,y:ny};}return null;}
+function unstuck(manual){const p=freeNear(G.pl.x,G.pl.y);G.stuckT=0;
+  if(!p||(manual&&p.x===G.pl.x&&p.y===G.pl.y&&manual==='home')){enterArea('home',{});toast('집으로 돌아왔어요');return;}
+  G.pl.x=p.x;G.pl.y=p.y;const d=G.dami,q=freeNear(p.x+8,p.y+4)||p;d.x=q.x;d.y=q.y;d.state='idle';G.busy=0;
+  if(manual)toast('가까운 길로 옮겼어요');}
 function move(e,dx,dy){if(freeAt(e.x+dx,e.y))e.x+=dx;if(freeAt(e.x,e.y+dy))e.y+=dy;}
 function setDir(e,dx,dy){if(Math.abs(dx)>Math.abs(dy)*1.1){e.dir='side';e.face=dx>0?1:-1;}else if(Math.abs(dy)>.01)e.dir=dy>0?'down':'up';}
 function stepTo(e,tx,ty,spd,dt){const dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy);if(d<1)return 0;const s=Math.min(spd*dt,d);move(e,dx/d*s,dy/d*s);setDir(e,dx,dy);e.moving=true;return d;}
