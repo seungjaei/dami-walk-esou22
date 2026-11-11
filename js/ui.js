@@ -68,6 +68,7 @@ function ovKey(ov,k,OK,BACK){
   if(ov.type==='map'){G.ov=null;return;}
   if(ov.type==='fris'){if(OK)frisAction();if(BACK)frisEnd(true);return;}
   if(ov.type==='agil'){if(BACK)agilEnd(true);return;}
+  if(ov.type==='duel'){if(OK)duelAct();else if(BACK&&ov.ph==='done')closeOv();return;}
   if(ov.type==='bath'){if(OK)ov.hold=true;if(BACK){G.ov=null;G.dami.state='idle';}return;}
   if(ov.type==='dex'){if(lf||rt)ov.tab=1-ov.tab;if(BACK||OK||k==='KeyF')G.ov=null;return;}
   if(BACK||OK||k==='KeyT'||k==='Tab')G.ov=null;
@@ -85,6 +86,7 @@ function onTap(p){
   if(ov.type==='map'){G.ov=null;return;}
   if(ov.type==='fris'){frisAction();return;}
   if(ov.type==='agil')return;
+  if(ov.type==='duel'){duelAct();return;}
   if(ov.type==='sleepwait'){if(ov._by&&p.y>ov._by&&p.y<ov._by+22&&Math.abs(p.x-VW/2)<52)mpWakeUp();return;}
   if(ov.type==='bath'){bathMove(p);ov.hold=true;return;}
   G.ov=null;
@@ -189,14 +191,14 @@ function drawGame(t){
   drawHUD(t);
   if(isTouch&&joyId!==null){ell(ctx,joyO.x,joyO.y,22,22,'rgba(255,255,255,.18)');ell(ctx,joyO.x+JOY.x*20,joyO.y+JOY.y*20,9,9,'rgba(255,255,255,.5)');}
 }
-function questMark(n){if(n.role==='villager'){const qs=SV.today.quests.filter(q=>q.giver===n.id);if(qs.some(q=>q.state==='ready'))return '?';if(qs.some(q=>q.state==='new'))return '!';}if(n.role==='recv'&&n.q.state==='active')return '!';return null;}
+function questMark(n){if(n.id==='mayor'&&ch1Ready())return '!';if(n.role==='villager'){const qs=SV.today.quests.filter(q=>q.giver===n.id);if(qs.some(q=>q.state==='ready'))return '?';if(qs.some(q=>q.state==='new'))return '!';}if(n.role==='recv'&&n.q.state==='active')return '!';return null;}
 function drawObj(ob,t){const im=ob.img,o=G.pl,d=G.dami;
   if(ob.kind==='edgeSign'){ctx.drawImage(im,Math.round(ob.x-8),Math.round(ob.y-20));const P0=PLACES[ob.to],lock=P0.lv>SV.lv,s0=(lock?'🔒 ':'')+P0.name+(lock?` Lv${P0.lv}`:'');ctx.font='9px G9';const w=ctx.measureText(s0).width+8;px(ob.x-w/2,ob.y-34,w,12,'rgba(74,46,30,.85)');txt(s0,ob.x,ob.y-32,lock?'#d8c8b0':'#fff7e0',9,'center','G9');return;}
   if(ob.kind==='view'){const b=Math.sin(t*3)*2;if(ob.q.state==='active'){drawItemIcon('photo',ob.x-5,ob.y-16+b);txt('사진',ob.x,ob.y-28+b,'#fff',9,'center','G9','#c0602a');}return;}
   if(!im)return;
   if(ob.kind==='tree'){ell(ctx,ob.x,ob.y-1,11,3.5,'rgba(0,0,0,.18)');let a=1;for(const c of [o,d])if(c.y<ob.y-2&&Math.abs(c.x-ob.x)<16&&c.y>ob.y-46)a=.5;ctx.globalAlpha=a;ctx.drawImage(im,Math.round(ob.x-18),Math.round(ob.y-46));ctx.globalAlpha=1;return;}
   if(ob.kind==='house'){ctx.drawImage(im,Math.round(ob.x-30),Math.round(ob.y-60));if(SV.today.clock>=19*60){px(ob.x-19,ob.y-21,9,8,'rgba(255,220,130,.9)');px(ob.x+11,ob.y-21,9,8,'rgba(255,220,130,.9)');}
-    if(ob.id){const qs=SV.today.quests.filter(q=>NPCS[q.giver].home===ob.id);const m=qs.some(q=>q.state==='ready')?'?':qs.some(q=>q.state==='new')?'!':null;if(m){const b=Math.sin(t*4)*2;txt(m,ob.x,ob.y-72+b,'#fff7c0',11,'center','G11B','#c0602a');}
+    if(ob.id){const qs=SV.today.quests.filter(q=>NPCS[q.giver].home===ob.id);const m=qs.some(q=>q.state==='ready')?'?':qs.some(q=>q.state==='new')||(ob.id===NPCS.mayor.home&&ch1Ready())?'!':null;if(m){const b=Math.sin(t*4)*2;txt(m,ob.x,ob.y-72+b,'#fff7c0',11,'center','G11B','#c0602a');}
       if(Math.hypot(o.x-ob.x,o.y-ob.y)<60){ctx.font='9px G9';const nm=HOUSE_NAME[ob.id],w=ctx.measureText(nm).width+10;px(ob.x-w/2,ob.y-6,w,12,'rgba(74,46,30,.85)');txt(nm,ob.x,ob.y-4,'#fff7e0',9,'center','G9');}}return;}
   const w=im.width,h=im.height;
   if(ob.kind==='goal'||ob.kind==='fountain'){ell(ctx,ob.x,ob.y,w/2.4,4,'rgba(0,0,0,.15)');ctx.drawImage(im,Math.round(ob.x-w/2),Math.round(ob.y-h+2));
@@ -231,6 +233,7 @@ function bar(x,y,w,v,col){px(x,y,w,4,'#4a2e1e');px(x+1,y+1,w-2,2,'#e8d8b8');px(x
 function todoList(){const T0=SV.today.todo,c=SV.today.clock;const L=[
   {ic:'kibble',t:'아침밥 주기',ok:T0.feed1},{ic:'water',t:'물 갈아 주기',ok:T0.water},{ic:'walk',t:'마을 밖 2구역 산책',ok:T0.walk,sub:T0.walk?'':`${(SV.today.visited||[]).length}/2`}];
   for(const q of SV.today.quests)if(q.state!=='new')L.push({ic:'star',t:q.title,ok:q.state==='done',ready:q.state==='ready',sub:q.state==='ready'?`→ ${NPCS[q.giver].name}`:(q.n?`${q.got}/${q.n}`:'')});
+  L.splice(3,0,...ch1Todo());
   L.push({ic:'kibble',t:'저녁밥 주기',ok:T0.feed2,eve:true},{ic:'treat',t:'간식 타임',ok:T0.treat,eve:true},{ic:'bath',t:'샤워 타임',ok:T0.bath,eve:true},{ic:'bed',t:'잠자기',ok:false,eve:true});return L;}
 function drawHUD(t){
   const c=SV.today.clock;
@@ -240,7 +243,7 @@ function drawHUD(t){
   txt(`산책 Lv${SV.lv}`,12,24,'#4a3426',9,'left','G9');bar(58,26,40,SV.xp/XP_NEED(SV.lv),'#7cc36a');
   txt(`우정 Lv${SV.alv}`,104,24,'#d94f6a',9,'left','G9');bar(146,26,28,SV.aff/AFF_NEED(SV.alv),'#ef8fb6');
   const S0=st();[['배','hunger','#f2a33a'],['물','thirst','#5aa9e6'],['기분','mood','#ef8fb6'],['뽀송','clean','#9fd6f2']].forEach(([n,k,col],i)=>{const x=12+i*41;txt(n,x,38,'#7a5a3a',9,'left','G9');bar(x+(n.length>1?20:11),40,n.length>1?18:27,S0[k]/100,col);});
-  txt(`사료 ${SV.kibble} · 간식 ${SV.treats}`,12,49,'#9a7a5a',9,'left','G9');
+  txt(`사료 ${SV.kibble} · 간식 ${SV.treats}${resLine()}`,12,49,'#9a7a5a',9,'left','G9');
   netHUD();
   if(SV.sick)txt('배탈! 동물병원으로',96,49,'#d94f6a',9,'left','G9');else if(SV.today.ate)txt(`주워먹음 ${SV.today.ate}/7`,104,49,SV.today.ate>=5?'#d94f6a':'#9a7a5a',9,'left','G9');
   // 오늘 할 일
@@ -292,6 +295,7 @@ function drawOverlay(t){const ov=G.ov;
   if(ov.type==='bath')drawBath(t,ov);
   if(ov.type==='fris')drawFris(t,ov);
   if(ov.type==='agil')drawAgil(t,ov);
+  if(ov.type==='duel')drawDuel(t);
 }
 function drawBath(t,ov){updBath(1/60);ctx.fillStyle='rgba(40,25,20,.55)';ctx.fillRect(0,0,VW,VH);const x=VW/2-150,y=16,w=300,h=VH-32,w0=w;panel(x,y,w,h,'#e8f4fa');
   for(let ty=y+6;ty<y+h-6;ty+=14)for(let tx=x+6;tx<x+w-6;tx+=14)px(tx,ty,13,13,((tx+ty)/14)%2?'#ffffff':'#e0eef6');
@@ -375,7 +379,7 @@ function drawDiary(t){const D=G.diary;
 let last=performance.now();
 function frame(now){if(isTouch)syncTouch();const dt=Math.min(.05,(now-last)/1000);last=now;sceneT+=dt;const t=now/1000;
   ctx.setTransform(S,0,0,S,0,0);ctx.imageSmoothingEnabled=false;
-  try{netTick(dt);if(scene==='login')drawTitle(t,true);else if(scene==='title')drawTitle(t);else if(scene==='game'){if(!G.ov||['bath','fris','agil'].includes(G.ov.type)){if(!G.ov){update(dt);if(G.area&&!G.play&&!freeAt(G.pl.x,G.pl.y)){G.stuckT=(G.stuckT||0)+dt;if(G.stuckT>1.2)unstuck(false);}else G.stuckT=0;}else if(G.ov.type==='fris')updFris(dt);else if(G.ov.type==='agil')updAgil(dt);}else{G.fade=Math.max(0,G.fade-dt*2);}drawGame(t);}else if(scene==='diary')drawDiary(t);}
+  try{netTick(dt);if(scene==='login')drawTitle(t,true);else if(scene==='title')drawTitle(t);else if(scene==='game'){if(!G.ov||['bath','fris','agil','duel'].includes(G.ov.type)){if(G.ov&&G.ov.type==='duel')updDuel(dt);if(!G.ov){update(dt);if(G.area&&!G.play&&!freeAt(G.pl.x,G.pl.y)){G.stuckT=(G.stuckT||0)+dt;if(G.stuckT>1.2)unstuck(false);}else G.stuckT=0;}else if(G.ov.type==='fris')updFris(dt);else if(G.ov.type==='agil')updAgil(dt);}else{G.fade=Math.max(0,G.fade-dt*2);}drawGame(t);}else if(scene==='diary')drawDiary(t);}
   catch(e){console.error(e);}
   requestAnimationFrame(frame);}
 // ---------- 시작: 로그인 → 저장 불러오기 → 타이틀 ----------
@@ -407,14 +411,14 @@ function drawMinimap(){const A=G.area,w=96,h=Math.round(w*A.PH/A.PW),x=6,y=isTou
   netMinimap(x,y,k);px(x+o.x*k-2,y+o.y*k-2,4,4,'#4a2e1e');px(x+o.x*k-1,y+o.y*k-1,2,2,'#fff');
   txt(A.place?PLACES[A.place].name:'',x+w/2,y+h+2,'#fff',9,'center','G9','#4a2e1e');}
 const HOUSE_SHORT={vet:'동물병원',home:'우리집',grandma:'할머니',bakery:'빵집',florist:'꽃집',petshop:'펫샵',kid:'도윤',coach:'훈련소',mayor:'이장님'};
-function houseMark(hid){if(hid==='vet'&&SV.sick)return '!';const qs=SV.today.quests.filter(q=>NPCS[q.giver].home===hid);if(qs.some(q=>q.state==='ready'))return '?';if(qs.some(q=>q.state==='new'))return '!';
+function houseMark(hid){if(hid==='vet'&&SV.sick)return '!';if(hid===NPCS.mayor.home&&ch1Ready())return '!';const qs=SV.today.quests.filter(q=>NPCS[q.giver].home===hid);if(qs.some(q=>q.state==='ready'))return '?';if(qs.some(q=>q.state==='new'))return '!';
   const kt=SV.today.ev&&SV.today.ev.kitten;if(hid==='grandma'&&kt&&kt.state==='found')return '?';return null;}
 function zoneArea(id){return id==='town'?TOWN_CACHE[season()]:ZONE_CACHE[id+'_'+(id==='beach'?'sand':season())];}
 let WORLD_IMG=null,WORLD_SIG='';
 // 9개 구역을 틈 없이 한 장으로 이어 붙인 세계 지도 (구역이 새로 그려질 때만 다시 만듦)
 function worldImage(cw,ch){const sig=Object.keys(PLACES).map(id=>zoneArea(id)?1:0).join('')+cw+'x'+ch+season();if(WORLD_IMG&&sig===WORLD_SIG)return WORLD_IMG;WORLD_SIG=sig;
   WORLD_IMG=mk(cw*3,ch*3,g=>{g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.fillStyle=SEASONS[season()].grass[1];g.fillRect(0,0,cw*3,ch*3);
-    for(const [id,Z] of Object.entries(PLACES)){const A=zoneArea(id);if(A&&A.thumb)g.drawImage(A.thumb,Z.gx*cw,Z.gy*ch,cw,ch);}
+    for(const [id,Z] of Object.entries(PLACES)){if(Z.gx===undefined)continue;const A=zoneArea(id);if(A&&A.thumb)g.drawImage(A.thumb,Z.gx*cw,Z.gy*ch,cw,ch);}
     // 이음새를 부드럽게: 경계마다 얇은 숲 그림자 대신 옅은 띠
     g.fillStyle='rgba(255,255,255,.06)';for(let i=1;i<3;i++){g.fillRect(i*cw-1,0,2,ch*3);g.fillRect(0,i*ch-1,cw*3,2);}});
   return WORLD_IMG;}
@@ -426,7 +430,7 @@ function drawMap(t,ov){ctx.fillStyle='rgba(40,25,20,.6)';ctx.fillRect(0,0,VW,VH)
   const curId=G.area.kind==='town'?'town':G.area.place||'town';
   ctx.save();ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,250,235,.55)';ctx.lineWidth=1;
   for(let i=1;i<3;i++){ctx.beginPath();ctx.moveTo(gx+i*cw+.5,gy);ctx.lineTo(gx+i*cw+.5,gy+ch*3);ctx.stroke();ctx.beginPath();ctx.moveTo(gx,gy+i*ch+.5);ctx.lineTo(gx+cw*3,gy+i*ch+.5);ctx.stroke();}ctx.restore();
-  for(const [id,Z] of Object.entries(PLACES)){const cx=gx+Z.gx*cw,cy=gy+Z.gy*ch,lock=Z.lv>SV.lv,A=zoneArea(id);
+  for(const [id,Z] of Object.entries(PLACES)){if(Z.gx===undefined)continue;const cx=gx+Z.gx*cw,cy=gy+Z.gy*ch,lock=Z.lv>SV.lv,A=zoneArea(id);
     if(lock){ctx.fillStyle='rgba(235,228,215,.62)';ctx.fillRect(cx,cy,cw,ch);}
     else if(!A){ctx.fillStyle='rgba(235,228,215,.4)';ctx.fillRect(cx,cy,cw,ch);}
     const vis=(SV.today.visited||[]).includes(id),label=(lock?'🔒 ':'')+Z.name+(vis?' ✓':'');ctx.font='9px G9';const lw=ctx.measureText(label).width+8;

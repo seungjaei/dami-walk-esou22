@@ -21,6 +21,7 @@ function enterArea(kind,arg){
   if(kind==='town')tip('town','마을이에요! 집 문 앞에서 [행동]으로 들어가요. 마을 네 방향 길 끝으로 걸어가면 옆 구역으로 산책을 나가요. 지도는 [지도] 버튼!');
 }
 function goZone(to,from,exitDir){const P0=PLACES[to];
+  if(ch1GateExit(to)){const d=DIRS[exitDir];G.pl.x-=d[0]*18;G.pl.y-=d[1]*18;G.dami.x-=d[0]*18;G.dami.y-=d[1]*18;return;}
   if(P0.lv>SV.lv){toast(`${P0.name}은(는) 산책 레벨 ${P0.lv}에 열려요`);SFX.soft();const d=DIRS[exitDir];G.pl.x-=d[0]*18;G.pl.y-=d[1]*18;G.dami.x-=d[0]*18;G.dami.y-=d[1]*18;return;}
   SV.today.clock+=5;enterArea(to==='town'?'town':'zone',{id:to,from});}
 function visitZone(id){const V=SV.today.visited;if(V.includes(id))return;V.push(id);addCoins(5);gainXP(8);toast(`새 구역 산책: ${PLACES[id].name} (+5뼈다귀)`);logDay(`${PLACES[id].name}을(를) 걸었다.`);
@@ -225,6 +226,7 @@ function findInteract(){const A=G.area,o=G.pl,c=[];
   for(const ob of A.objs)if(ob.use){const r=ob.kind==='bed'||ob.kind==='tub'?26:20;if(reach(ob.x,ob.y+4,r))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+2,label:USE_LABEL[ob.use],act:()=>useObj(ob)});}
   const fp=typeof netNear==='function'&&netNear();if(fp)c.push({d:fp.d*.4,label:`${fp.p.nick}님에게 인사`,act:()=>openFriendMenu(fp.p)});
   if(G.dami.state!=='sleep'||true)if(reach(G.dami.x,G.dami.y,24))c.push({d:Math.hypot(o.x-G.dami.x,o.y-G.dami.y)+6,label:'담이',act:openDamiMenu});
+  ch1Interact(c,reach);
   c.sort((a,b)=>a.d-b.d);return c[0]||null;}
 const USE_LABEL={bed:'잠자기',wardrobe:'옷장 (꾸미기)',toy:'장난감 상자',feed:'밥그릇',water:'물그릇',bath:'샤워하기',board:'축제 게시판',photo:'사진 찍기'};
 function interact(){if(G.ov||G.play||G.busy)return;const h=findInteract();if(h){h.act();}}
@@ -269,6 +271,7 @@ function talk(n){SFX.sel();
     openDialog({name:n.name,P:n.P,id:'host',lines:['호수 공원 원반 대회에 오신 걸 환영해요!','다섯 번 던져서 30점 넘으면 상품이 있어요. 참가할래요?'],choices:['참가할래요!','다음에요'],cb:i=>{if(i===0)startFrisbee(true);}});return;}
   if(n.role==='merchant'){openDialog({name:n.name,P:n.P,id:'merchant',lines:['어이쿠, 귀여운 손님이네. 먼 데서 온 귀한 물건들이야. 구경해 봐!'],cb:()=>openShop(true)});return;}
   if(n.role==='recv'){const q=n.q;if(q.state==='active'){q.state='ready';SFX.clover();logDay(`${q.to}께 빵 바구니를 배달했다.`);openDialog({name:q.to,P:n.P,id:'recv',lines:['어머, 몽글 빵집 빵이네요! 고마워요.','담이도 착하게 기다렸구나~']});}else openDialog({name:q.to,P:n.P,id:'recv',lines:['빵 정말 맛있어요!']});return;}
+  if(ch1Talk(n))return;
   const id=n.id,def=NPCS[id];const qs=SV.today.quests.filter(q=>q.giver===id);
   const ev=SV.today.ev,E=SV.today.events;
   if(id==='grandma'&&ev.kitten&&ev.kitten.state==='found'){ev.kitten.state='done';addCoins(50);gainXP(30);gainAff(2);SFX.clear();logDay('나비를 할머니께 데려다 드렸다. 할머니가 눈물을 글썽이셨다.');
@@ -315,9 +318,9 @@ function festivalScore(){const tricks=Object.values(TRICKS).filter(t=>t.lv<=SV.a
 function walkerTalk(n){const w=n.w,met=SV.friends[w.id]||0,c=SV.today.clock;
   const lines=[met?pick(w.again):w.first[0]];
   const situ=SV.today.events.includes('rain')?SITU.rain:c<10*60?SITU.morning:c>=18*60?SITU.evening:null;if(situ&&rnd()<.6)lines.push(pick(situ));
-  if(n.played){lines.push(pick(w.chat));openDialog({name:w.owner,P:w.P,id:w.id,lines});return;}
+  if(n.played){lines.push(pick(w.chat));openDialog({name:w.owner,P:w.P,id:w.id,lines,choices:['🏁 대결하기 (뼈다귀 내기)','다음에요'],cb:i=>{if(i===0)openDuel(n);}});return;}
   const acts=MEET_ACTS.slice().sort(()=>rnd()-.5).slice(0,3);lines.push(`${w.dog}랑 뭐 할까요?`);
-  openDialog({name:w.owner,P:w.P,id:w.id,lines,choices:[...acts.map(a=>a.label),'다음에요'],cb:i=>{const a=acts[i];if(a)doMeet(n,a.id);}});}
+  openDialog({name:w.owner,P:w.P,id:w.id,lines,choices:[...acts.map(a=>a.label),'🏁 대결하기 (뼈다귀 내기)','다음에요'],cb:i=>{const a=acts[i];if(a)doMeet(n,a.id);else if(i===acts.length)openDuel(n);}});}
 function doMeet(n,id){const w=n.w,dlg=(L)=>openDialog({name:w.owner,P:w.P,id:w.id,lines:L});
   const reg=isNew=>isNew?[`📖 친구 도감에 '${w.dog}(${w.breed})' 등록!`]:[];
   if(id==='play'){startPlay(n);return;}

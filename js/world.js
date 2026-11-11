@@ -2,7 +2,7 @@
 // ===== 저장 데이터 · 하루 일정 · 지역(집/마을/산책길) 생성 =====
 // 멀티플레이 대비: SV = 이 플레이어 저장본(JSON 하나). 나중에 Supabase에 그대로 올릴 수 있게 순수 데이터만 둔다.
 const store={get(k,d){try{const v=localStorage.getItem('dami3_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('dami3_'+k,JSON.stringify(v));}catch(e){}}};
-const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false,sick:0,bathN:0};
+const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false,sick:0,bathN:0,ch:1,mq:0,tools:0,wood:0,stone:0,glamp:{st:0,style:null}};
 let SV=JSON.parse(JSON.stringify(DEF));
 function loadSave(cloud){const s=cloud||store.get(saveKey(),null);SV=Object.assign(JSON.parse(JSON.stringify(DEF)),s||{});muted=SV.muted;delete SV.solo;delete SV.mp;delete SV.room;delete SV.roomNick;delete SV.pid;}
 function save(force){if(isMP())SV._t=Date.now();store.set(saveKey(),SV);cloudSave(force);}
@@ -206,6 +206,7 @@ function zoneStatic(id){
   A.ground=renderGround(W,H,PW,PH,M,SD,WT,th,sea);
   for(let ty=2;ty<H-2;ty++)for(let tx=2;tx<W-2;tx++)if(tile[ty*W+tx]===0&&!occ[ty*W+tx]&&pd[ty*W+tx]>=1&&rnd()<th.tall*.5)A.tall.push({x:tx*T+R(2,14),y:ty*T+R(4,15),ph:R(0,6)});
   A.lamps=A.objs.filter(o=>o.kind==='lamp');A.occ=occ;
+  if(id==='glamp')glampPrep(A);
   addEdgeExits(A,id);
   A.staticObjs=A.objs.slice();A.baseSolid=A.solid.slice();A.thumb=makeThumb(A);
   seed=save0;ZONE_CACHE[key]=A;return A;
@@ -238,5 +239,6 @@ function genZone(id){
   if(E.includes('flea')&&A.place==='market')A.npcs.push({id:'merchant',role:'merchant',P:{hair:'#6a4a8a',style:'cap',hat:'#6a4a8a',top:'#d8a83a',topD:'#c0902a',bottom:'#4a3a5a'},name:'떠돌이 상인',x:hubX+36,y:hubY+16,dir:'down',face:1,anim:0});
   const kt=SV.today.ev.kitten;
   if(kt&&kt.state==='lost'&&kt.place===A.place){const b=A.branches.length?pick(A.branches).pts.slice(-1)[0]:[hubX+60,hubY+40];A.qitems.push({kitten:true,x:b[0],y:b[1],icon:'kitten',name:'아기 고양이 나비',got:false});}
+  ch1ZoneHook(A);
   return A;
 }

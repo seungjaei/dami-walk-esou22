@@ -14,8 +14,10 @@ const PLACES={
   river:{name:'강변 산책길',theme:'river',lv:3,gx:2,gy:2,land:'bench',desc:'반짝이는 강과 갈대밭'}
 };
 const ZGRID={};for(const [k,z] of Object.entries(PLACES))ZGRID[z.gx+','+z.gy]=k;
+// 지도 밖 특별 연결 (챕터 1: 뒷산 숲길 북쪽 ↔ 꼭대기 빈터)
+const XLINK={mountain:{N:'glamp'},glamp:{S:'mountain'}};
 const DIRS={N:[0,-1],S:[0,1],E:[1,0],W:[-1,0]},OPP={N:'S',S:'N',E:'W',W:'E'};
-const zoneAt=(id,dir)=>{const z=PLACES[id],d=DIRS[dir];return ZGRID[(z.gx+d[0])+','+(z.gy+d[1])]||null;};
+const zoneAt=(id,dir)=>{const x=XLINK[id];if(x&&x[dir])return x[dir];const z=PLACES[id],d=DIRS[dir];if(!z||z.gx===undefined)return null;return ZGRID[(z.gx+d[0])+','+(z.gy+d[1])]||null;};
 const OUTER=Object.keys(PLACES).filter(k=>k!=='town');
 THEMES.meadow={path:{type:'dirt',b:'#d6b27a',m:'#c09a64',l:'#e6c896',e:'#9a7448'},obj:[['tree',.02],['bush',.03],['flowerbed',.03]],tall:.6,sniff:['flowers','flowers','stump'],birds:true};
 THEMES.summit={path:{type:'dirt',b:'#bfa07a',m:'#a88a66',l:'#d2b892',e:'#7a6448'},obj:[['pine',.07],['rock',.1],['fern',.02]],tall:.2,sniff:['stump','flowers','rock']};
