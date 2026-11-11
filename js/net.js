@@ -155,15 +155,18 @@ function mpSaveRoom(){if(!SV.room)return;SV.mp=SV.mp||{};const o=SV.mp[SV.room]|
 function mpEnter(code,nick){
   if(SV.solo)mpRestoreSolo();
   SV.mp=SV.mp||{};SV.solo={day:SV.day,today:SV.today};SV.room=code;SV.roomNick=nick;
-  if(!pidOk(SV.pid))SV.pid=Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8);
+  // 방마다 따로 만든 무작위 번호(pid)로 명단을 맞춘다 → 다른 방끼리 같은 사람인지 알 수 없음
+  const newPid=()=>Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8);
   const r=SV.mp[code];NET.newRoom=!(r&&r.today);
-  if(!NET.newRoom){SV.day=r.day;SV.today=r.today;}else{SV.day=1;newToday();SV.mp[code]={day:1,today:SV.today,roster:[SV.pid],lock:false};}
+  if(!NET.newRoom){SV.day=r.day;SV.today=r.today;if(!pidOk(r.pid)){r.pid=newPid();r.roster=(r.roster||[]).concat(r.pid);}}
+  else{SV.day=1;newToday();const pid=newPid();SV.mp[code]={day:1,today:SV.today,pid,roster:[pid],lock:false};}
+  delete SV.pid;
   TITLE_MSG='';save(true);startGame(false);netJoin(code,nick);}
 function mpRestoreSolo(){if(!SV.solo)return;
   if(SV.room&&SV.mp&&SV.mp[SV.room])mpSaveRoom();
   SV.day=SV.solo.day;SV.today=SV.solo.today;delete SV.solo;SV.room=null;}
 function mpLeave(){netLeave(true);mpRestoreSolo();save(true);if(G)G.ov=null;scene='title';sceneT=0;musicOn=false;showTouch(false);}
-async function mpTrack(){if(!NET.ch||!NET.me)return;try{await NET.ch.track({n:NET.me.nick,p:SV.pid,t:NET.joinT,d:SV.day,z:NET.sleeping?1:0});}catch(e){}}
+async function mpTrack(){if(!NET.ch||!NET.me)return;try{await NET.ch.track({n:NET.me.nick,p:(mpRoom()||{}).pid,t:NET.joinT,d:SV.day,z:NET.sleeping?1:0});}catch(e){}}
 function mpOnClock(m){if(!isMP()||!m||m.i!==NET.hostId||NET.host||!numOk(m.c)||m.c<0||m.c>30*60||(Math.abs(m.c-SV.today.clock)>120&&Date.now()-NET.joinT>15000))return;
   if((m.d|0)===SV.day&&!NET.sleeping&&scene==='game'&&Math.abs(m.c-SV.today.clock)>1.5)SV.today.clock=m.c;}
 function mpCheck(){if(!isMP()||!NET.members.length)return;if(NET.newRoom&&Date.now()-NET.joinT>3000&&NET.members.every(m=>m.d<=1))NET.newRoom=false;const ms=NET.members,maxD=Math.min(SV.day+30,Math.max(...ms.map(m=>m.d)));
