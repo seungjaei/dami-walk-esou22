@@ -36,10 +36,11 @@ function solidPx(x,y){const A=G.area,tx=Math.floor(x/T),ty=Math.floor(y/T);if(tx
 function freeAt(x,y,hw=4,hh=2){return !solidPx(x-hw,y-hh)&&!solidPx(x+hw,y-hh)&&!solidPx(x-hw,y+hh)&&!solidPx(x+hw,y+hh);}
 // 끼임 탈출: 가까운 곳부터 빙글빙글 돌며 걸을 수 있는 자리를 찾는다
 function freeNear(x,y){if(freeAt(x,y))return{x,y};for(let r=4;r<=T*14;r+=4)for(let a=0;a<24;a++){const q=a/24*Math.PI*2,nx=x+Math.cos(q)*r,ny=y+Math.sin(q)*r;if(freeAt(nx,ny)&&freeAt(nx,ny,6,3))return{x:nx,y:ny};}return null;}
-function unstuck(manual){const p=freeNear(G.pl.x,G.pl.y);G.stuckT=0;
-  if(!p||(manual&&p.x===G.pl.x&&p.y===G.pl.y&&manual==='home')){enterArea('home',{});toast('집으로 돌아왔어요');return;}
+function safeSpot(){const A=G.area;if(A.hub)return freeNear(A.hub[0]*T+8,A.hub[1]*T+30)||freeNear(A.hub[0]*T+8,A.hub[1]*T+8);if(A.exits&&A.exits[0]&&!A.outdoor){const e=A.exits[0];return freeNear(e.x+e.w/2,e.y-14);}return A.spawn?freeNear(A.spawn.x,A.spawn.y):null;}
+function unstuck(manual){const p=manual?(safeSpot()||freeNear(G.pl.x,G.pl.y)):freeNear(G.pl.x,G.pl.y);G.stuckT=0;
+  if(!p){enterArea('home',{});toast('집으로 돌아왔어요');return;}
   G.pl.x=p.x;G.pl.y=p.y;const d=G.dami,q=freeNear(p.x+8,p.y+4)||p;d.x=q.x;d.y=q.y;d.state='idle';G.busy=0;
-  if(manual)toast('가까운 길로 옮겼어요');}
+  if(manual){toast('🆘 안전한 곳으로 옮겼어요');G.fade=.5;SFX.sel();}}
 function move(e,dx,dy){if(freeAt(e.x+dx,e.y))e.x+=dx;if(freeAt(e.x,e.y+dy))e.y+=dy;}
 function setDir(e,dx,dy){if(Math.abs(dx)>Math.abs(dy)*1.1){e.dir='side';e.face=dx>0?1:-1;}else if(Math.abs(dy)>.01)e.dir=dy>0?'down':'up';}
 function stepTo(e,tx,ty,spd,dt){const dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy);if(d<1)return 0;const s=Math.min(spd*dt,d);move(e,dx/d*s,dy/d*s);setDir(e,dx,dy);e.moving=true;return d;}

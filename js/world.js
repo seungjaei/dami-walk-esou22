@@ -61,8 +61,9 @@ function genRoom(id){
   for(const f of R0.furn){const [k,tx,ty,v,use,sol]=f;const o=addFurn(A,k,tx,ty,v||0,use,sol!==false);if(use==='feed')A.bowlF=o;if(use==='water')A.bowlW=o;if(k==='cushion')A.cushion=o;}
   for(const [k,tx,ty,f] of R0.walls)if(f){const o={kind:k,x:tx*T,y:ty*T+20,img:buildFurn('towel'),flat:true};A.objs.push(o);}
   if(R0.npc){const [nid,tx,ty]=R0.npc;A.npcs.push({id:nid,role:'villager',P:NPCS[nid].P,name:NPCS[nid].name,x:tx*T,y:ty*T,dir:'down',face:1,anim:0});}
-  A.exits.push({x:R0.door*T,y:A.PH-6,w:2*T,h:8,act:()=>{const h=TOWN_HOUSES.find(h=>h.id===id);enterArea('town',{x:h.tx*T+16,y:h.ty*T+28});}});
+  A.exits.push({x:R0.door*T,y:A.PH-6,w:2*T,h:8,act:R0.exitTo||(()=>{const h=TOWN_HOUSES.find(h=>h.id===id);enterArea('town',{x:h.tx*T+16,y:h.ty*T+28});})});
   A.spawn={x:(R0.door+1)*T,y:A.PH-22};
+  if(R0.after)R0.after(A);
   return A;
 }
 
