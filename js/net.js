@@ -54,10 +54,10 @@ function netOnSync(){if(!NET.ch)return;const S=NET.ch.presenceState(),alive=new 
   for(const id of Object.keys(NET.peers))if(!alive.has(id)){const p=NET.peers[id];if(p.joined)toast(`${p.nick}님이 나갔어요`);delete NET.peers[id];}
   NET.sig='';
   // 같이 하기: 먼저 들어온 4명까지만, 가장 먼저 들어온 사람이 시계 담당(호스트)
-  NET.members=Object.entries(S).map(([id,a])=>{const m=(a&&a[0])||{};return{id,n:cleanNick(m.n)||'친구',t:typeof m.t==='number'&&m.t>0?m.t:9e15,d:Math.max(1,Math.min(9999,m.d|0)),z:m.z?1:0};}).sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1));
+  NET.members=Object.entries(S).map(([id,a])=>{const m=(a&&a[0])||{};return{id,n:cleanNick(m.n)||'친구',t:typeof m.t==='number'&&m.t>Date.now()-864e5&&m.t<Date.now()+6e4?m.t:9e15,d:Math.max(1,Math.min(9999,m.d|0)),z:m.z?1:0};}).sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1));
   if(!NET.me||!NET.members.some(m=>m.id===NET.me.id))return;
   const idx=NET.members.findIndex(m=>m.id===NET.me.id);
-  if(idx>=MP_MAX){TITLE_MSG=`친구방 ${NET.room} 은 꽉 찼어요 (최대 ${MP_MAX}명)`;mpLeave();return;}
+  if(idx>=MP_MAX&&Date.now()-NET.joinT<5000){TITLE_MSG=`친구방 ${NET.room} 은 꽉 찼어요 (최대 ${MP_MAX}명)`;mpLeave();return;}
   NET.members=NET.members.slice(0,MP_MAX);NET.hostId=NET.members[0].id;NET.host=NET.hostId===NET.me.id;
   mpCheck();}
 function netOnState(m){if(!m)return;const p=netPeer(m.i);if(!p)return;
@@ -147,9 +147,9 @@ function mpRestoreSolo(){if(!SV.solo)return;
   SV.day=SV.solo.day;SV.today=SV.solo.today;delete SV.solo;SV.room=null;}
 function mpLeave(){netLeave(true);mpRestoreSolo();save(true);if(G)G.ov=null;scene='title';sceneT=0;musicOn=false;showTouch(false);}
 async function mpTrack(){if(!NET.ch||!NET.me)return;try{await NET.ch.track({n:NET.me.nick,t:NET.joinT,d:SV.day,z:NET.sleeping?1:0});}catch(e){}}
-function mpOnClock(m){if(!isMP()||!m||m.i!==NET.hostId||NET.host||!numOk(m.c))return;
+function mpOnClock(m){if(!isMP()||!m||m.i!==NET.hostId||NET.host||!numOk(m.c)||m.c<0||m.c>30*60||Math.abs(m.c-SV.today.clock)>120)return;
   if((m.d|0)===SV.day&&!NET.sleeping&&scene==='game'&&Math.abs(m.c-SV.today.clock)>1.5)SV.today.clock=m.c;}
-function mpCheck(){if(!isMP()||!NET.members.length)return;const ms=NET.members,maxD=Math.max(...ms.map(m=>m.d));
+function mpCheck(){if(!isMP()||!NET.members.length)return;const ms=NET.members,maxD=Math.min(SV.day+30,Math.max(...ms.map(m=>m.d)));
   if(maxD>SV.day){if(NET.sleeping&&maxD===SV.day+1&&scene==='game'){mpEndDay();return;}if(scene!=='diary')mpJump(maxD);return;}
   if(NET.sleeping&&scene==='game'&&ms.every(m=>m.d===SV.day&&m.z))mpEndDay();}
 function mpEndDay(){NET.sleeping=false;if(G)G.ov=null;endDay();SV.mp[SV.room]={day:SV.day,today:SV.today};mpTrack();}
