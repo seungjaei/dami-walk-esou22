@@ -24,7 +24,7 @@ $$;
 -- 단계별 기본 재료 (게임 js/ch1.js의 GSTAGES와 같다)
 create or replace function public.glamp_need(p_st int, p_n int) returns jsonb
 language sql immutable as $$
-  select coalesce((select jsonb_object_agg(k, ceil(v * (1 + 0.35 * greatest(0, p_n - 1)))::int)
+  select coalesce((select jsonb_object_agg(k, ceil(v::numeric * (1 + 0.35 * greatest(0, p_n - 1)))::int)
     from jsonb_each_text(case p_st
       when 0 then '{"stone":6,"coins":20}'::jsonb
       when 1 then '{"wood":12}'::jsonb
@@ -76,7 +76,7 @@ begin
     g.pool := jsonb_set(g.pool, array[k], to_jsonb((g.pool->>k)::int - v));
   end loop;
   if g.st = 2 then
-    if p_style not in ('bell', 'dome', 'cabin') then raise exception '외형을 골라 주세요'; end if;
+    if p_style is null or p_style not in ('bell', 'dome', 'cabin') then raise exception '외형을 골라 주세요'; end if;
     g.style := p_style;
   end if;
   update public.room_glamp set st = g.st + 1, style = g.style, pool = g.pool, ver = ver + 1, updated_at = now() where room = p_room;
