@@ -4,7 +4,7 @@
 const store={get(k,d){try{const v=localStorage.getItem('dami3_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('dami3_'+k,JSON.stringify(v));}catch(e){}}};
 const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false,sick:0,bathN:0};
 let SV=JSON.parse(JSON.stringify(DEF));
-function loadSave(cloud){const s=cloud||store.get(saveKey(),null);SV=Object.assign(JSON.parse(JSON.stringify(DEF)),s||{});muted=SV.muted;}
+function loadSave(cloud){const s=cloud||store.get(saveKey(),null);SV=Object.assign(JSON.parse(JSON.stringify(DEF)),s||{});muted=SV.muted;if(SV.solo)mpRestoreSolo();}
 function save(force){store.set(saveKey(),SV);cloudSave(force);}
 const walkLv=()=>SV.lv,affLv=()=>SV.alv;
 const season=()=>['봄','여름','가을'][Math.floor((SV.day-1)/5)%3];

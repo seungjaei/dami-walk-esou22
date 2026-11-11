@@ -54,6 +54,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;tou
 #rform input[readonly]{background:#e9f4e4;letter-spacing:3px;font-family:G11B}
 #rform button{font:16px G11B;padding:9px;border:3px solid #4a2e1e;border-radius:4px;background:#6aae5a;color:#fff;text-shadow:0 1px 0 #2e5a28;cursor:pointer}
 #rform button.sub{background:#e6d6b6;color:#7a5a3a;text-shadow:none;font-size:14px;padding:6px}
+#rlist{display:flex;flex-wrap:wrap;gap:5px}#rform button.chip{font:12px G9;padding:4px 8px;background:#e9f4e4;color:#3d6a3a;text-shadow:none;border-width:2px}
+@media (max-height:480px){#room{align-items:flex-start}#rform{padding:8px 14px;gap:4px}#rform h1{font-size:15px}#rform input{padding:5px 8px;font-size:15px}#rform button{padding:5px;font-size:14px}}
 #rform .rm{min-height:16px;font:12px G9;color:#3d6a3a;text-align:center}
 #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#2b2233;color:#fff7e0;font:16px G11B;text-align:center;z-index:9}
 @media (orientation:portrait) and (max-width:700px){#rot{display:flex}}
@@ -79,10 +81,12 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;tou
   <div id="lmsg"></div>
 </form></div>
 <div id="room"><form id="rform" autocomplete="off">
-  <h1 id="rtitle">친구방</h1>
+  <h1 id="rtitle">👫 같이 하기 (최대 4명)</h1>
   <label class="lbl">내 별명 (친구에게 보여요 · 8자)<input id="rnick" type="text" maxlength="8" placeholder="예: 담이언니"></label>
   <label class="lbl">방 코드 (숫자 6자리)<input id="rcode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456"></label>
-  <button id="rbtn" type="submit">들어가기</button>
+  <div id="rlist"></div>
+  <button id="rnew" type="button" class="sub">새 코드 받기</button>
+  <button id="rbtn" type="submit">친구방 들어가기</button>
   <button id="rcancel" type="button" class="sub">취소</button>
   <div id="rmsg" class="rm"></div>
 </form></div>

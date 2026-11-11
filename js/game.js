@@ -295,9 +295,9 @@ function startPlay(n){const o=G.pl;G.busy=0;G.play={w:n,t:4,cx:(o.x+n.x)/2,cy:(o
 // ---------- 샤워·잠 ----------
 function bathDone(){const T0=SV.today.todo;addSt('clean',100);addSt('mood',10);gainAff(2);if(!T0.bath){T0.bath=1;logDay('보송보송 샤워 완료! 담이에게서 좋은 냄새가 났다.');}G.dami.state='idle';G.dami.sparkle=8;}
 function goSleep(){const T0=SV.today.todo;const miss=[];if(!T0.feed2)miss.push('저녁밥');if(!T0.treat)miss.push('간식 타임');if(!T0.bath)miss.push('샤워');
-  if(SV.today.clock<17*60){openDialog({name:'침대',lines:['아직 해가 쨍쨍해요. 담이랑 더 놀다 와요!'],choices:['그래도 잘래요','더 놀래요'],cb:i=>{if(i===0)endDay();}});return;}
-  if(miss.length){openDialog({name:'침대',lines:[`아직 ${miss.join(', ')}을(를) 안 했어요.`,'담이가 기다리고 있는 것 같아요.'],choices:['그래도 잘래요','마저 할게요'],cb:i=>{if(i===0)endDay();}});return;}
-  openDialog({name:'침대',lines:['오늘 하루도 고생했어요. 담이야 잘 자~'],choices:['잘 자요','조금 더 놀래요'],cb:i=>{if(i===0)endDay();}});}
+  if(SV.today.clock<17*60){openDialog({name:'침대',lines:['아직 해가 쨍쨍해요. 담이랑 더 놀다 와요!'],choices:['그래도 잘래요','더 놀래요'],cb:i=>{if(i===0)sleepNow();}});return;}
+  if(miss.length){openDialog({name:'침대',lines:[`아직 ${miss.join(', ')}을(를) 안 했어요.`,'담이가 기다리고 있는 것 같아요.'],choices:['그래도 잘래요','마저 할게요'],cb:i=>{if(i===0)sleepNow();}});return;}
+  openDialog({name:'침대',lines:['오늘 하루도 고생했어요. 담이야 잘 자~'],choices:['잘 자요','조금 더 놀래요'],cb:i=>{if(i===0)sleepNow();}});}
 function endDay(){const Td=SV.today;const done=Object.values(Td.todo).filter(v=>v).length;SV.stickers+=done;
   G.diary={day:SV.day,season:season(),log:Td.log.slice(),todo:Object.assign({},Td.todo),earned:Td.earned,met:Td.met.slice(),dug:Td.dug.slice(),ate:Td.ate,yelp:Td.yelp,festival:SV.day===FESTIVAL_DAY&&!SV.festival};
   if(G.diary.festival){SV.festival=true;const sc=festivalScore();G.diary.fest=sc;addCoins(100);}
