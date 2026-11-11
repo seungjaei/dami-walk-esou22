@@ -147,7 +147,7 @@ function mpRestoreSolo(){if(!SV.solo)return;
   SV.day=SV.solo.day;SV.today=SV.solo.today;delete SV.solo;SV.room=null;}
 function mpLeave(){netLeave(true);mpRestoreSolo();save(true);if(G)G.ov=null;scene='title';sceneT=0;musicOn=false;showTouch(false);}
 async function mpTrack(){if(!NET.ch||!NET.me)return;try{await NET.ch.track({n:NET.me.nick,t:NET.joinT,d:SV.day,z:NET.sleeping?1:0});}catch(e){}}
-function mpOnClock(m){if(!isMP()||!m||m.i!==NET.hostId||NET.host||!numOk(m.c)||m.c<0||m.c>30*60||Math.abs(m.c-SV.today.clock)>120)return;
+function mpOnClock(m){if(!isMP()||!m||m.i!==NET.hostId||NET.host||!numOk(m.c)||m.c<0||m.c>30*60||(Math.abs(m.c-SV.today.clock)>120&&Date.now()-NET.joinT>15000))return;
   if((m.d|0)===SV.day&&!NET.sleeping&&scene==='game'&&Math.abs(m.c-SV.today.clock)>1.5)SV.today.clock=m.c;}
 function mpCheck(){if(!isMP()||!NET.members.length)return;const ms=NET.members,maxD=Math.min(SV.day+30,Math.max(...ms.map(m=>m.d)));
   if(maxD>SV.day){if(NET.sleeping&&maxD===SV.day+1&&scene==='game'){mpEndDay();return;}if(scene!=='diary')mpJump(maxD);return;}
