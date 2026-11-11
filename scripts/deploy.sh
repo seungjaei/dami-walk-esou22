@@ -39,7 +39,7 @@ wait_pages "$SIG"
 echo "  접속한 사람들이 하던 일을 마치도록 30초 기다려요"; sleep 30
 
 echo "② 새 버전 배포"
-git rebase -q "$SIG"
+git rebase -q -X theirs "$SIG"   # 신호 파일이 겹치면 내 쪽(ok)으로
 printf 'ok\n' > update-status.txt
 git add update-status.txt
 git diff --cached --quiet || git commit -q -m "점검 끝: 새 버전 배포"
