@@ -30,7 +30,7 @@ const CUT_IMG={wood:()=>spr('stump0',()=>buildObj('stump',0)),stone:()=>spr('peb
 const resOfKind=k=>k==='rock'?'stone':(k==='tree'||k==='pine')?'wood':FIBER_KINDS.includes(k)?'fiber':FLOWER_KINDS.includes(k)?'flower':null;
 function natInteract(c,reach){const A=G.area,o=G.pl;if(!A||!A.outdoor||!A.place||!(SV.mq>=1))return;
   for(const ob of A.objs){if(ob.cutDone||ob.sniff)continue;const r=resOfKind(ob.kind);if(r!=='fiber'&&r!=='flower')continue;
-    if(reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+4,label:r==='fiber'?'🌿 풀 베기':'🌸 꽃 따기',act:()=>gather(ob,r)});}}
+    if(reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)*.5,label:gLabel(ob,r),act:()=>gather(ob,r),x:ob.x,y:ob.y-(ob.img?ob.img.height:14),ry:ob.y});}}
 
 // ---------- 담이가 냄새 맡고 땅 파서 찾은 것 (판매대에서 뼈다귀로 바꾼다) ----------
 const FINDS={acorn:{name:'도토리',ic:'🌰',p:4},mush:{name:'숲 버섯',ic:'🍄',p:6},herb:{name:'향긋한 풀잎',ic:'🌿',p:3},feath:{name:'새 깃털',ic:'🪶',p:5},

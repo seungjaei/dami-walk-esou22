@@ -57,7 +57,7 @@ function genRoom(id){
   });
   for(let x=0;x<A.W;x++){setSolid(A,x,0);setSolid(A,x,1);setSolid(A,x,2);if(x!==R0.door&&x!==R0.door+1)setSolid(A,x,A.H-1);}
   for(let y=0;y<A.H;y++){setSolid(A,0,y);setSolid(A,A.W-1,y);}
-  if(id==='home')for(let y=3;y<=6;y++)setSolid(A,12,y);
+  // (예전: 거실과 욕실 사이 x=12에 보이지 않는 벽이 있어 공놀이 자리 → 샤워실 길이 막혀 보였음. 벽은 위쪽 벽면에만 그려져 있어서 없앰)
   for(const f of R0.furn){const [k,tx,ty,v,use,sol]=f;const o=addFurn(A,k,tx,ty,v||0,use,sol!==false);if(use==='feed')A.bowlF=o;if(use==='water')A.bowlW=o;if(k==='cushion')A.cushion=o;}
   for(const [k,tx,ty,f] of R0.walls)if(f){const o={kind:k,x:tx*T,y:ty*T+20,img:buildFurn('towel'),flat:true};A.objs.push(o);}
   if(R0.npc){const [nid,tx,ty]=R0.npc;A.npcs.push({id:nid,role:'villager',P:NPCS[nid].P,name:NPCS[nid].name,x:tx*T,y:ty*T,dir:'down',face:1,anim:0});}
@@ -136,7 +136,7 @@ function genTown(){
   A.npcs=[];A.birds=[];A.qitems=[];A.objs=A.staticObjs.slice();A.solid=A.baseSolid.slice();
   const w=WALKERS[SV.today.townWalker];addWalker(A,w,{x:24*T,y:20.5*T},null);
   for(let i=0;i<5;i++)A.birds.push({x:R(18,27)*T,y:R(20,27)*T,hop:R(0,2),fly:0,vx:0,vy:0,face:1,alive:true});
-  townHook(A);
+  townHook(A);townHouseHook(A);townShopHook(A);
   return A;
 }
 function addWalker(A,w,pos,route){
@@ -241,6 +241,6 @@ function genZone(id){
   if(E.includes('flea')&&A.place==='market')A.npcs.push({id:'merchant',role:'merchant',P:{hair:'#6a4a8a',style:'cap',hat:'#6a4a8a',top:'#d8a83a',topD:'#c0902a',bottom:'#4a3a5a'},name:'떠돌이 상인',x:hubX+36,y:hubY+16,dir:'down',face:1,anim:0});
   const kt=SV.today.ev.kitten;
   if(kt&&kt.state==='lost'&&kt.place===A.place){const b=A.branches.length?pick(A.branches).pts.slice(-1)[0]:[hubX+60,hubY+40];A.qitems.push({kitten:true,x:b[0],y:b[1],icon:'kitten',name:'아기 고양이 나비',got:false});}
-  ch1ZoneHook(A);ch2ZoneHook(A);
+  ch1ZoneHook(A);ch2ZoneHook(A);parkHook(A);
   return A;
 }

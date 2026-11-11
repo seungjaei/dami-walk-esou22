@@ -62,11 +62,11 @@ function placeObj(A,f){const D=DECO[f.id];if(!D)return null;const im=decoImg(f.i
   const o={kind:'deco',decoId:f.id,f,x:(f.tx+wT/2)*T,y:(f.ty+1)*T-1,img:im,flat:!!D.flat,use:D.use||null};
   if(D.kind==='lamp')o.light=true;A.objs.push(o);if(!D.flat)for(let x=f.tx;x<f.tx+wT;x++)setSolid(A,x,f.ty);return o;}
 // 그 칸에 놓을 수 있나 (벽·문 앞·다른 가구·사람 자리 피하기)
-function canPlace(A,id,tx,ty,ignore){const wT=decoTiles(id);if(ty<3||ty>A.H-2||tx<1||tx+wT>A.W-1)return false;const dr=(ROOMS.glampin||{}).door||7;if(ty>=A.H-3&&tx<=dr+2&&tx+wT>=dr)return false;   // 문 앞 두 줄은 비워 둔다
-  for(let x=tx;x<tx+wT;x++){if(x<=2&&ty===3)return false;for(const f of SV.glamp.furn){if(f===ignore)continue;if(f.ty===ty&&x>=f.tx&&x<f.tx+decoTiles(f.id))return false;}}
+function canPlace(A,id,tx,ty,ignore){const wT=decoTiles(id);if(ty<3||ty>A.H-2||tx<1||tx+wT>A.W-1)return false;const dr=(ROOMS[A.glampin?'glampin':A.id]||{}).door||7;const bs=A.baseSolidRoom;if(bs)for(let x=tx;x<tx+wT;x++)if(bs[ty*A.W+x])return false;if(ty>=A.H-3&&tx<=dr+2&&tx+wT>=dr)return false;   // 문 앞 두 줄은 비워 둔다
+  for(let x=tx;x<tx+wT;x++){if(x<=2&&ty===3)return false;for(const f of DS().furn){if(f===ignore)continue;if(f.ty===ty&&x>=f.tx&&x<f.tx+decoTiles(f.id))return false;}}
   const pt=Math.floor(G.pl.x/T),py=Math.floor(G.pl.y/T);if(py===ty&&pt>=tx&&pt<tx+wT&&!DECO[id].flat)return false;return true;}
 function refreshRoom(){const A=G.area;A.objs=A.objs.filter(o=>o.kind!=='deco');A.solid=new Uint8Array(A.baseSolidRoom||A.solid);
-  for(const f of SV.glamp.furn)placeObj(A,f);const cu=A.objs.find(o=>o.decoId==='dogbed');A.cushion=cu||null;}
+  for(const f of DS().furn)placeObj(A,f);const cu=A.objs.find(o=>o.decoId==='dogbed');A.cushion=cu||null;}
 
 // ---------- 작업대: 가구 만들기 ----------
 function openCraft(){SFX.sel();const items=[];
@@ -83,25 +83,25 @@ function craft(id){const c=decoCost(id);for(const [r,v] of Object.entries(c))if(
   openMenu({title:`✨ ${DECO[id].name}을(를) 만들었어요!`,items:[{label:'🎨 바로 놓으러 가기',fn:()=>{closeOv();startDeco(id);}},{label:'더 만들기',fn:openCraft},{label:'닫기',fn:closeOv}]});}
 
 // ---------- 꾸미기 모드 ----------
-function startDeco(hold){const A=G.area;if(!A||!A.glampin)return;
+function startDeco(hold){const A=G.area;if(!A||!(A.glampin||A.homeDeco))return;
   const tx=clamp(Math.floor(G.pl.x/T),1,A.W-2),ty=clamp(Math.floor(G.pl.y/T)-1,3,A.H-2);
-  G.ov={type:'deco',cx:tx,cy:ty,hold:hold&&SV.glamp.inv[hold]>0?hold:null,from:null};tip('deco','꾸미기: 방향키로 칸을 고르고 [행동]으로 놓아요. 놓인 가구에서 [행동]을 누르면 들어 올려요. [메뉴]/Esc로 끝!');}
-function decoAt(tx,ty){return SV.glamp.furn.find(f=>f.ty===ty&&tx>=f.tx&&tx<f.tx+decoTiles(f.id));}
+  G.ov={type:'deco',cx:tx,cy:ty,hold:hold&&DS().inv[hold]>0?hold:null,from:null};tip('deco','꾸미기: 방향키로 칸을 고르고 [행동]으로 놓아요. 놓인 가구에서 [행동]을 누르면 들어 올려요. [메뉴]/Esc로 끝!');}
+function decoAt(tx,ty){return DS().furn.find(f=>f.ty===ty&&tx>=f.tx&&tx<f.tx+decoTiles(f.id));}
 function decoKey(k,OK,BACK){const o=G.ov,A=G.area;const mv={ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]}[k];
   if(mv){o.cx=clamp(o.cx+mv[0],1,A.W-2);o.cy=clamp(o.cy+mv[1],3,A.H-2);SFX.step();return;}
   if(k==='KeyQ'||k==='Tab'){pickHold();return;}
   if(OK){decoAct();return;}
-  if(BACK){if(o.hold&&o.from){SV.glamp.furn.push(o.from);refreshRoom();}else if(o.hold){}closeOv();save();}}
+  if(BACK){if(o.hold&&o.from){DS().furn.push(o.from);refreshRoom();}else if(o.hold){}closeOv();save();}}
 function decoAct(){const o=G.ov,A=G.area;
   if(o.hold){if(!canPlace(A,o.hold,o.cx,o.cy)){SFX.soft();toast('여기엔 놓을 수 없어요');return;}
-    const f={id:o.hold,tx:o.cx,ty:o.cy};SV.glamp.furn.push(f);if(!o.from){SV.glamp.inv[o.hold]--;}o.hold=null;o.from=null;refreshRoom();SFX.pick();save();hearts(f.tx*T+8,f.ty*T,3);return;}
-  const f=decoAt(o.cx,o.cy);if(f){SV.glamp.furn=SV.glamp.furn.filter(x=>x!==f);o.hold=f.id;o.from=f;o.cx=f.tx;refreshRoom();SFX.sel();return;}
+    const f={id:o.hold,tx:o.cx,ty:o.cy};DS().furn.push(f);if(!o.from){DS().inv[o.hold]--;}o.hold=null;o.from=null;refreshRoom();SFX.pick();save();hearts(f.tx*T+8,f.ty*T,3);return;}
+  const f=decoAt(o.cx,o.cy);if(f){DS().furn=DS().furn.filter(x=>x!==f);o.hold=f.id;o.from=f;o.cx=f.tx;refreshRoom();SFX.sel();return;}
   pickHold();}
-function pickHold(){const o=G.ov,own=Object.entries(SV.glamp.inv).filter(([k,v])=>v>0);
+function pickHold(){const o=G.ov,own=Object.entries(DS().inv).filter(([k,v])=>v>0);
   if(o.hold&&o.from){toast('들고 있는 가구를 먼저 놓거나 [치우기] 해요');return;}
   const items=own.map(([id,v])=>({label:`${DECO[id].name} (${v})`,fn:()=>{G.ov=Object.assign(o,{hold:id,from:null});}}));
   const save0=o;openMenu({title:own.length?'놓을 가구 고르기':'만든 가구가 없어요 (작업대에서 만들어요)',back:()=>{G.ov=save0;},items:items.concat([{label:'뒤로',fn:()=>{G.ov=save0;}}])});}
-function decoRemove(){const o=G.ov;if(!o.hold)return;if(o.from){SV.glamp.inv[o.hold]=(SV.glamp.inv[o.hold]||0)+1;}o.hold=null;o.from=null;refreshRoom();save();toast('가방에 넣었어요');}
+function decoRemove(){const o=G.ov;if(!o.hold)return;if(o.from){DS().inv[o.hold]=(DS().inv[o.hold]||0)+1;}o.hold=null;o.from=null;refreshRoom();save();toast('가방에 넣었어요');}
 // 화면 아래 가운데 버튼 막대 (왼쪽 위 상태창·휴대폰 오른쪽 아래 버튼과 겹치지 않게)
 const DECO_BAR=()=>{const x0=VW/2-84;return[[x0,'act'],[x0+58,'alt'],[x0+116,'end']];};
 function decoTap(p){const o=G.ov,A=G.area;

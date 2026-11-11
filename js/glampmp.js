@@ -45,8 +45,8 @@ craft=function(id){if(!isMP()||GMP.fail)return _craft(id);const c=decoCost(id);f
   .catch(()=>{for(const [r,v] of Object.entries(c)){if(r==='coins')SV.coins+=v;else SV[r]+=v;}toast('만들지 못했어요. 인터넷을 확인해 주세요');});};
 async function mgPushFurn(){if(!isMP()||GMP.fail)return;try{const d=await mgRpc('glamp_place',{p_furn:SV.glamp.furn,p_inv:SV.glamp.inv,p_ver:GMP.ver});
     if(d&&d.conflict){toast('친구가 방금 숙소를 바꿨어요. 다시 불러왔어요');await mgFetch();return;}mgApply(d);mgNotify();}catch(e){toast('저장하지 못했어요. 인터넷을 확인해 주세요');}}
-decoAct=function(){const had=G.ov&&G.ov.hold;_decoAct();if(isMP()&&had&&G.ov&&!G.ov.hold)mgPushFurn();};
-decoRemove=function(){_decoRemove();if(isMP())mgPushFurn();};
+decoAct=function(){const had=G.ov&&G.ov.hold;_decoAct();if(isMP()&&G.area&&G.area.glampin&&had&&G.ov&&!G.ov.hold)mgPushFurn();};
+decoRemove=function(){_decoRemove();if(isMP()&&G.area&&G.area.glampin)mgPushFurn();};
 ch1ZoneHook=function(A){_ch1ZoneHook(A);if(isMP()&&A.place==='glamp')mgFetch();};
 glampRoomAfter=function(A){_glampRoomAfter(A);if(isMP())setTimeout(mgFetch,50);};
 // 멀티는 숙소 3단계가 서버 기준

@@ -1,7 +1,7 @@
 "use strict";
 // ===== 게임 진행: 이동 · 담이 행동 · 상호작용 · 퀘스트 · 하루 루틴 =====
 let G=null,scene='title',sceneT=0;
-const LEASH=50,MIN_PER_SEC=1/0.8;
+const LEASH=50,MIN_PER_SEC_BASE=1/0.8;let MIN_PER_SEC=MIN_PER_SEC_BASE;   // 설정 '시간 흐름'으로 바뀜
 
 function newGameState(){G={area:null,pl:{x:0,y:0,dir:'down',face:1,anim:0,moving:false,step:0},dami:{x:0,y:0,dir:'down',face:1,anim:0,state:'idle',t:0,moving:false,pull:0,curT:8,wT:2,idle:0},
   cam:{x:0,y:0},bubbles:[],parts:[],ov:null,tip:null,fade:1,ball:null,play:null,callT:0,callCD:0,boost:0,hint:null,exitLock:true,lowT:20,toast:null};}
@@ -222,11 +222,11 @@ function updBirds(dt){const A=G.area,o=G.pl,d=G.dami;for(const b of A.birds){if(
 // ---------- 상호작용 ----------
 function findInteract(){const A=G.area,o=G.pl,c=[];
   const reach=(x,y,r)=>Math.hypot(o.x-x,o.y-y)<r;
-  for(const n of A.npcs)if(reach(n.x,n.y,24))c.push({d:Math.hypot(o.x-n.x,o.y-n.y),label:n.role==='walker'?`${n.w.owner} & ${n.w.dog}`:n.name+'와 대화',act:()=>talk(n)});
-  for(const dr of A.doors)if(reach(dr.x,dr.y,14))c.push({d:0,label:dr.name+' 들어가기',act:()=>{SFX.sel();dr.id==='home'?enterArea('home',null):enterArea('house',{id:dr.id});}});
-  for(const ob of A.objs)if(ob.use){const r=ob.kind==='bed'||ob.kind==='tub'?26:20;if(reach(ob.x,ob.y+4,r))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+2,label:USE_LABEL[ob.use],act:()=>useObj(ob)});}
-  const fp=typeof netNear==='function'&&netNear();if(fp)c.push({d:fp.d*.4,label:`${fp.p.nick}님에게 인사`,act:()=>openFriendMenu(fp.p)});
-  if(G.dami.state!=='sleep'||true)if(reach(G.dami.x,G.dami.y,24))c.push({d:Math.hypot(o.x-G.dami.x,o.y-G.dami.y)+6,label:'담이',act:openDamiMenu});
+  for(const n of A.npcs)if(reach(n.x,n.y,24))c.push({d:Math.hypot(o.x-n.x,o.y-n.y),label:n.role==='walker'?`${n.w.owner} & ${n.w.dog}`:n.name+'와 대화',act:()=>talk(n),x:n.x,y:n.y-36,ry:n.y});
+  for(const dr of A.doors)if(reach(dr.x,dr.y,14))c.push({d:0,x:dr.x,y:dr.y-26,ring:false,label:dr.name+' 들어가기',act:()=>{SFX.sel();dr.id==='home'?enterArea('home',null):enterArea('house',{id:dr.id});}});
+  for(const ob of A.objs)if(ob.use){const r=ob.kind==='bed'||ob.kind==='tub'?26:20;if(reach(ob.x,ob.y+4,r))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+2,label:USE_LABEL[ob.use],act:()=>useObj(ob),x:ob.x,y:ob.y-(ob.img?ob.img.height:18),ry:ob.y});}
+  const fp=typeof netNear==='function'&&netNear();if(fp)c.push({d:fp.d*.4,label:`${fp.p.nick}님에게 인사`,act:()=>openFriendMenu(fp.p),x:fp.p.x,y:fp.p.y-40,ry:fp.p.y});
+  if(G.dami.state!=='sleep'||true)if(reach(G.dami.x,G.dami.y,24)){const esc=G.dami.escaped||G.dami.state==='escape';c.push({d:Math.hypot(o.x-G.dami.x,o.y-G.dami.y)+(esc?-20:6),label:esc?'🛁 담이 붙잡기':'담이',act:esc?catchDami:openDamiMenu,x:G.dami.x,y:G.dami.y-24,ry:G.dami.y});}
   ch1Interact(c,reach);
   c.sort((a,b)=>a.d-b.d);return c[0]||null;}
 const USE_LABEL={bed:'잠자기',wardrobe:'옷장 (꾸미기)',toy:'장난감 상자',feed:'밥그릇',water:'물그릇',bath:'샤워하기',board:'축제 게시판',photo:'사진 찍기'};

@@ -63,13 +63,13 @@ function buildGlamp(st,style){return mk(128,96,g=>{const cx=64,by=88;
 
 // ---------- 상호작용 ----------
 function ch1Interact(c,reach){const A=G.area,o=G.pl;if(!A)return;
-  for(const ob of A.objs)if(ob.onUse&&reach(ob.x,ob.y+6,ob.r||28))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)*.4,label:ob.lab,act:()=>ob.onUse(ob)});   // 작업대·판매대·연습장은 옆의 담이보다 먼저
+  for(const ob of A.objs)if(ob.onUse&&reach(ob.x,ob.y+6,ob.r||28))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)*.4,label:ob.lab,act:()=>ob.onUse(ob),x:ob.x,y:ob.y-(ob.img?ob.img.height:18),ry:ob.y});   // 작업대·판매대·연습장은 옆의 담이보다 먼저
   if(!A.outdoor)return;
   if(SV.mq>=1){
-    if(CHOP_ZONES.includes(A.place))for(const ob of A.objs)if((ob.kind==='tree'||ob.kind==='pine')&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+4,label:'🪓 나무 베기',act:()=>gather(ob,'wood')});
-    if(MINE_ZONES.includes(A.place))for(const ob of A.objs)if(ob.kind==='rock'&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+4,label:'⛏️ 돌 캐기',act:()=>gather(ob,'stone')});}
+    if(CHOP_ZONES.includes(A.place))for(const ob of A.objs)if((ob.kind==='tree'||ob.kind==='pine')&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)*.5,label:gLabel(ob,'wood'),act:()=>gather(ob,'wood'),x:ob.x,y:ob.y-40,ry:ob.y});
+    if(MINE_ZONES.includes(A.place))for(const ob of A.objs)if(ob.kind==='rock'&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)*.5,label:gLabel(ob,'stone'),act:()=>gather(ob,'stone'),x:ob.x,y:ob.y-(ob.img?ob.img.height:14),ry:ob.y});}
   natInteract(c,reach);
-  if(A.gsite&&reach(A.gsite.x,A.gsite.y-14,40))c.push({d:Math.hypot(o.x-A.gsite.x,o.y-A.gsite.y)*.5,label:SV.glamp.st>=4?'⛺ 글램핑장':'🔨 글램핑장 짓기',act:openGlamp});}
+  if(A.gsite&&reach(A.gsite.x,A.gsite.y-14,40))c.push({d:Math.hypot(o.x-A.gsite.x,o.y-A.gsite.y)*.5,label:SV.glamp.st>=4?'⛺ 글램핑장':'🔨 글램핑장 짓기',act:openGlamp,x:A.gsite.x,y:A.gsite.y-70,ry:A.gsite.y});}
 function gather(ob,res){if(G.busy)return;const A=G.area,si=A.staticObjs.indexOf(ob);if(si<0)return;
   const n=RI(1,2);G.busy=.7;SV.today.clock+=res==='wood'||res==='stone'?8:4;SFX.step();
   bubble('pl',{wood:['쿵! 쿵!','영차!','나무야 고마워'],stone:['깡! 깡!','단단하다!','영차!'],fiber:['싹둑싹둑','부드러운 풀이다'],flower:['예쁘다~','향기 좋아']}[res][RI(0,1)],.9);
