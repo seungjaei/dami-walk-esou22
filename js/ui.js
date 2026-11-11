@@ -162,7 +162,7 @@ function drawGame(t){
   for(const dg of A.dogs)if(on(dg.x,dg.y))L.push({y:dg.y,dog:dg});
   for(const b of A.birds)if(b.alive&&on(b.x,b.y))L.push({y:b.y,bird:b});
   for(const k of A.ducks)if(on(k.x,k.y))L.push({y:k.y-6,duck:k});
-  netDrawList(L);L.push({y:o.y,pl:1});if(d.state!=='bath')L.push({y:d.y,dami:1});
+  netDrawList(L);L.push({y:o.y,pl:1});if(d.state!=='bath'&&!G.area.drive)L.push({y:d.y,dami:1});
   if(G.ball)L.push({y:G.ball.y,ball:1});
   L.sort((a,b)=>a.y-b.y);
   for(const e of L){
@@ -178,6 +178,7 @@ function drawGame(t){
     else if(e.bird){const b=e.bird,f=b.fly?(Math.floor(t*12)%2):0,x=Math.round(b.x),y=Math.round(b.y),bc=b.gull?'#f4f4f4':'#5a4a46',bl=b.gull?'#c8ccd4':'#8a7a70';if(!b.fly)px(x-2,y+1,5,1,'rgba(0,0,0,.15)');px(x-2,y-3,5,3,bc);px(x-1,y-3,3,2,bl);px(x+(b.face>0?2:-3),y-4,2,2,'#5a4a46');px(x+(b.face>0?4:-4),y-3,1,1,'#e0a040');if(b.fly)px(x-3,y-5+f*3,7,1,'#5a4a46');}
     else if(e.duck){const k=e.duck,x=Math.round(k.x),y=Math.round(k.y)-6,bob=Math.sin(t*2+k.x)>0?0:1;px(x-4,y+3+bob,9,2,'#d8f3fa');px(x-4,y+bob,8,4,'#4a4a4a');px(x-3,y+bob,6,3,'#ffffff');px(x+(k.face>0?2:-4),y-3+bob,3,3,'#ffffff');px(x+(k.face>0?5:-5),y-2+bob,2,1,'#f2a33a');px(x+(k.face>0?3:-3),y-2+bob,1,1,'#222');}
     else if(e.ball){const b=G.ball;ell(ctx,b.x,b.y,3,1,'rgba(0,0,0,.2)');ell(ctx,b.x,b.y-3-b.z,3,3,'#4a2e1e');ell(ctx,b.x,b.y-3-b.z,2.2,2.2,'#c8e04a');}
+    else if(e.pl&&A.drive)drawCarPlayer(o);
     else if(e.pl){if(A.outdoor&&!G.play)drawLeash();ell(ctx,o.x,o.y,6,2,'rgba(0,0,0,.2)');const fr=o.moving?[0,1,0,3][Math.floor(o.anim)%4]:0;const im=humanImg('girl',GIRL,o.dir,fr);ctx.save();ctx.translate(Math.round(o.x),Math.round(o.y));if(o.dir==='side'&&o.face<0)ctx.scale(-1,1);ctx.drawImage(im,-10,-30);ctx.restore();}
     else if(e.dami)drawDami(t);
     else if(e.peer)drawPeer(e.peer,t);else if(e.peerDog)drawPeerDog(e.peerDog);
@@ -238,7 +239,7 @@ function bar(x,y,w,v,col){px(x,y,w,4,'#4a2e1e');px(x+1,y+1,w-2,2,'#e8d8b8');px(x
 function todoList(){const T0=SV.today.todo,c=SV.today.clock;const L=[
   {ic:'kibble',t:'아침밥 주기',ok:T0.feed1},{ic:'water',t:'물 갈아 주기',ok:T0.water},{ic:'walk',t:'마을 밖 2구역 산책',ok:T0.walk,sub:T0.walk?'':`${(SV.today.visited||[]).length}/2`}];
   for(const q of SV.today.quests)if(q.state!=='new')L.push({ic:'star',t:q.title,ok:q.state==='done',ready:q.state==='ready',sub:q.state==='ready'?`→ ${NPCS[q.giver].name}`:(q.n?`${q.got}/${q.n}`:'')});
-  L.splice(3,0,...ch1Todo());
+  L.splice(3,0,...ch1Todo(),...ch2Todo());
   L.push({ic:'kibble',t:'저녁밥 주기',ok:T0.feed2,eve:true},{ic:'treat',t:'간식 타임',ok:T0.treat,eve:true},{ic:'bath',t:'샤워 타임',ok:T0.bath,eve:true},{ic:'bed',t:'잠자기',ok:false,eve:true});return L;}
 function drawHUD(t){
   const c=SV.today.clock;

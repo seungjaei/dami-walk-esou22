@@ -24,6 +24,7 @@ async function netJoin(code,nick){
     .on('broadcast',{event:'say'},({payload})=>netOnSay(payload))
     .on('broadcast',{event:'nose'},({payload})=>netOnNose(payload))
     .on('broadcast',{event:'clk'},({payload})=>mpOnClock(payload))
+    .on('broadcast',{event:'glamp'},()=>{if(typeof mgFetch==='function')mgFetch();})
     .on('presence',{event:'sync'},netOnSync);
   NET.ch=ch;
   ch.subscribe(async s=>{

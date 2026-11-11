@@ -241,6 +241,6 @@ function genZone(id){
   if(E.includes('flea')&&A.place==='market')A.npcs.push({id:'merchant',role:'merchant',P:{hair:'#6a4a8a',style:'cap',hat:'#6a4a8a',top:'#d8a83a',topD:'#c0902a',bottom:'#4a3a5a'},name:'떠돌이 상인',x:hubX+36,y:hubY+16,dir:'down',face:1,anim:0});
   const kt=SV.today.ev.kitten;
   if(kt&&kt.state==='lost'&&kt.place===A.place){const b=A.branches.length?pick(A.branches).pts.slice(-1)[0]:[hubX+60,hubY+40];A.qitems.push({kitten:true,x:b[0],y:b[1],icon:'kitten',name:'아기 고양이 나비',got:false});}
-  ch1ZoneHook(A);
+  ch1ZoneHook(A);ch2ZoneHook(A);
   return A;
 }

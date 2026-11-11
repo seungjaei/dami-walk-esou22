@@ -9,7 +9,7 @@ function newGameState(){G={area:null,pl:{x:0,y:0,dir:'down',face:1,anim:0,moving
 // ---------- 지역 이동 ----------
 function enterArea(kind,arg){
   let A;
-  if(kind==='home')A=genRoom('home');else if(kind==='house')A=genRoom(arg.id);else if(kind==='town')A=genTown();else A=genZone(arg.id);
+  if(kind==='home')A=genRoom('home');else if(kind==='house')A=genRoom(arg.id);else if(kind==='town')A=genTown();else if(SPECIAL_AREAS[kind])A=SPECIAL_AREAS[kind]();else A=genZone(arg.id);
   G.area=A;let sp=A.spawn;if(arg&&arg.x!==undefined)sp=arg;else if(arg&&arg.from)sp=spawnAt(kind==='town'?'town':arg.id,arg.from);
   {const f=freeNear(sp.x,sp.y)||sp;G.pl.x=f.x;G.pl.y=f.y;}G.stuckT=0;G.pl.dir=arg&&arg.from?({N:'down',S:'up',E:'side',W:'side'})[arg.from]:kind==='town'?'down':'up';if(arg&&arg.from)G.pl.face=arg.from==='E'?-1:1;
   const d=G.dami;d.x=G.pl.x+(A.outdoor?14:10)*(G.pl.face||1);d.y=G.pl.y+4;if(!freeAt(d.x,d.y)){d.x=G.pl.x;d.y=G.pl.y;}d.state='idle';G.ball=null;G.play=null;G.busy=0;
@@ -75,7 +75,7 @@ function update(dt){
   // 플레이어
   const mx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0)+JOY.x,my=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0)+JOY.y;
   const ml=Math.hypot(mx,my);o.moving=ml>.2&&!G.play&&!G.busy;
-  if(o.moving){const sp=(A.outdoor?70:58)*Math.min(1,ml);move(o,mx/ml*sp*dt,my/ml*sp*dt);setDir(o,mx,my);o.anim+=dt*7;o.step-=dt;if(o.step<=0){o.step=.3;SFX.step();}}
+  if(o.moving){const sp=(A.drive?150:A.outdoor?70:58)*Math.min(1,ml);move(o,mx/ml*sp*dt,my/ml*sp*dt);setDir(o,mx,my);o.anim+=dt*7;o.step-=dt;if(o.step<=0){o.step=.3;SFX.step();}}
   updDami(dt);
   if(A.outdoor)leash();
   updNPCs(dt);
@@ -98,7 +98,7 @@ function update(dt){
 function hearts(x,y,n=3){for(let i=0;i<n;i++)G.parts.push({x:x+R(-5,5),y:y,vx:R(-8,8),vy:R(-24,-14),t:1,heart:true});}
 
 // ---------- 담이 ----------
-function updDami(dt){
+function updDami(dt){if(G.area&&G.area.drive){const d=G.dami;d.x=G.pl.x;d.y=G.pl.y;d.state='idle';d.moving=false;return;}
   const A=G.area,o=G.pl,d=G.dami;d.moving=false;d.pull=0;
   if(G.callT>0&&!['trick','pet','treat','bath'].includes(d.state)){stepTo(d,o.x-(o.dir==='side'?o.face*12:0),o.y+(o.dir==='up'?8:4),150,dt);return;}
   switch(d.state){

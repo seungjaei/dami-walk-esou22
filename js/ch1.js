@@ -63,7 +63,7 @@ function buildGlamp(st,style){return mk(128,96,g=>{const cx=64,by=88;
 
 // ---------- 상호작용 ----------
 function ch1Interact(c,reach){const A=G.area,o=G.pl;if(!A)return;
-  for(const ob of A.objs)if(ob.onUse&&reach(ob.x,ob.y+6,ob.r||28))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+3,label:ob.lab,act:()=>ob.onUse(ob)});
+  for(const ob of A.objs)if(ob.onUse&&reach(ob.x,ob.y+6,ob.r||28))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)*.4,label:ob.lab,act:()=>ob.onUse(ob)});   // 작업대·판매대·연습장은 옆의 담이보다 먼저
   if(!A.outdoor)return;
   if(SV.mq>=1){
     if(CHOP_ZONES.includes(A.place))for(const ob of A.objs)if((ob.kind==='tree'||ob.kind==='pine')&&reach(ob.x,ob.y,18))c.push({d:Math.hypot(o.x-ob.x,o.y-ob.y)+4,label:'🪓 나무 베기',act:()=>gather(ob,'wood')});
@@ -79,7 +79,8 @@ function gather(ob,res){if(G.busy)return;const A=G.area,si=A.staticObjs.indexOf(
 
 // ---------- 이장님: 챕터 1 시작 ----------
 function ch1Ready(){return SV.mq===0&&(SV.day>=2||SV.lv>=2);}
-function ch1Talk(n){if(n.id!=='mayor')return false;
+function ch1Talk(n){if(n.role==='arena'){openDialog({name:n.name,P:n.P,id:'coach',lines:['대회장에 온 걸 환영해요!','🚩 어질리티 · 🥏 원반 · 🦴 기다려 연습장에서 연습할수록 숙련도가 올라요.','준비되면 제 옆 접수처에서 대회에 출전해요. 하루에 한 번 출전할 수 있어요!']});return true;}
+  if(n.id!=='mayor')return false;
   if(ch1Ready()){openDialog({name:'이장님',P:NPCS.mayor.P,id:'mayor',lines:['오, 마침 잘 왔네! 부탁이 하나 있어.','뒷산 숲길 위쪽 꼭대기에 넓은 빈터가 있거든. 거기에 마을 사람들이 쉬어 갈 글램핑장을 지으면 좋겠어.','나무랑 돌은 뒷산에서 구하면 돼. 자, 이 도끼랑 곡괭이를 쓰게나.','🪓 도끼 · ⛏️ 곡괭이를 받았어요! 뒷산 숲길 북쪽 오솔길이 열렸어요.','📜 챕터 1 — 「꼭대기 글램핑장」 시작!'],
     cb:()=>{SV.mq=1;SV.tools=1;SFX.clear();logDay('이장님께 글램핑장 짓기를 부탁받았다. 도끼와 곡괭이도 받았다!');save(true);}});return true;}
   if(SV.mq===1&&rnd()<.5){const st=SV.glamp.st,nx=GSTAGES[st];openDialog({name:'이장님',P:NPCS.mayor.P,id:'mayor',lines:[`글램핑장은 잘 돼 가나? 다음은 「${nx.name}」이로군.`,'나무는 뒷산 숲길·꼭대기·캠핑장에서, 돌은 뒷산·꼭대기·정상에서 구할 수 있다네.']});return true;}
@@ -107,7 +108,7 @@ function build(){const st=SV.glamp.st,need=gNeed(st);for(const [r,v] of Object.e
   toast(`🔨 「${GSTAGES[st].name}」 완료! 다음: ${GSTAGES[SV.glamp.st].name}`);save(true);}
 function ch1Clear(){SV.mq=2;SV.ch=Math.max(SV.ch||1,2);addCoins(200);gainAff(5);
   const fr=WALKERS.filter(w=>SV.friends[w.id]).slice(0,4).map(w=>w.dog);
-  openDialog({name:'이장님',P:NPCS.mayor.P,id:'mayor',lines:['우와… 정말 멋진 글램핑장이 생겼구먼!',fr.length?`${fr.join(', ')}도 놀러 왔어! 모닥불 앞에서 다 같이 마시멜로를 구웠어요.`:'마을 강아지들도 곧 놀러 오겠지!','🎉 챕터 1 「꼭대기 글램핑장」 완료! 보상 뼈다귀 +200','이제 여기서 잘 수도 있고, 친구 강아지를 초대할 수도 있어요.','🚗 챕터 2 「강아지 대회」는 곧 열려요! 이 글램핑장이 출발점이 될 거예요.']});
+  openDialog({name:'이장님',P:NPCS.mayor.P,id:'mayor',lines:['우와… 정말 멋진 글램핑장이 생겼구먼!',fr.length?`${fr.join(', ')}도 놀러 왔어! 모닥불 앞에서 다 같이 마시멜로를 구웠어요.`:'마을 강아지들도 곧 놀러 오겠지!','🎉 챕터 1 「꼭대기 글램핑장」 완료! 보상 뼈다귀 +200','이제 여기서 잘 수도 있고, 친구 강아지를 초대할 수도 있어요.','🚗 글램핑장 옆에 자동차가 생겼어요! 챕터 2 「강아지 대회」 시작 — 도로를 따라 대회장에 가서 연습하고 출전해요.']});
   logDay('드디어 꼭대기 글램핑장 완성! 모닥불 앞에서 친구들과 놀았다.');save(true);}
 function inviteGuest(){const fr=WALKERS.filter(w=>SV.friends[w.id]);
   if(!fr.length){openMenu({title:'초대할 친구가 없어요',items:[{label:'산책하다 만난 강아지와 친구가 되면 초대할 수 있어요',dis:true,fn:()=>{}},{label:'닫기',fn:closeOv}]});return;}
@@ -158,7 +159,7 @@ function duelEnd(r){const o=G.ov;o.ph='done';o.res=r;const w=o.w;
   save();}
 function drawDuel(t){const o=G.ov,w=o.w,X=VW/2-170,Y=VH/2-80,W0=340,H0=160;
   ctx.fillStyle='rgba(30,20,15,.55)';ctx.fillRect(0,0,VW,VH);panel(X,Y,W0,H0);
-  txt(`${DUELS[o.kind].name} · 담이 vs ${w.dog} · 🦴${o.bet}`,VW/2,Y+8,'#c0602a',11,'center','G11B');
+  txt(`${DUELS[o.kind].name} · 담이 vs ${w.dog} · ${o.bet?'🦴'+o.bet:o.trial?'연습/대회':''}`,VW/2,Y+8,'#c0602a',11,'center','G11B');
   const dp=(P,key,x,y,pose,fr,flip)=>{const im=pupImg(P,key,'side',fr,pose,key==='dami'?SV.eq:null);ctx.save();ctx.translate(Math.round(x),Math.round(y));if(flip)ctx.scale(-1,1);ctx.drawImage(im,-14,-21);ctx.restore();};
   const WP=Object.assign({s:1,K:'#1e1512',blush:'#f6b0bc'},w.D),fr=Math.floor(t*10)%4;
   if(o.kind==='race'){for(const [i,y] of [[0,Y+62],[1,Y+102]]){px(X+20,y,W0-40,3,'#c8a878');px(X+W0-34,y-26,2,30,'#ef5a6f');}
