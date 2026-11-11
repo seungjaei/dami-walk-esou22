@@ -120,7 +120,7 @@ function mpCheck(){if(!isMP()||!NET.members.length)return;const ms=NET.members,m
 function mpEndDay(){NET.sleeping=false;if(G)G.ov=null;endDay();mpTrack();}
 function mpJump(d){SV.day=d;newToday();save(true);NET.sleeping=false;
   if(scene==='game'){G.ov=null;enterArea('home',{wake:true});toast(`친구들과 날짜를 맞췄어요 · DAY ${d}`);}mpTrack();}
-function mpSleep(){if(!netOn()){endDay();return;}NET.sleeping=true;G.ov={type:'sleepwait'};G.dami.state='sleep';G.dami.t=999;mpTrack();mpCheck();}
+function mpSleep(){if(!netOn()){toast('친구들과 연결이 안 돼서 아직 못 자요. 잠시 뒤 다시 해 봐요');return;}NET.sleeping=true;G.ov={type:'sleepwait'};G.dami.state='sleep';G.dami.t=999;mpTrack();mpCheck();}
 function mpWakeUp(){NET.sleeping=false;G.ov=null;G.dami.state='idle';mpTrack();}
 function sleepNow(){if(isMP())mpSleep();else endDay();}
 function drawSleepWait(t){ctx.fillStyle='rgba(20,18,50,.72)';ctx.fillRect(0,0,VW,VH);const ms=NET.members,w=230,h=60+ms.length*14,x=VW/2-w/2,y=VH/2-h/2-10;

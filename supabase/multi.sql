@@ -317,13 +317,19 @@ end $$;
 
 -- ---------- 4) 실시간 채널 잠금: 방 사람만 그 방 채널에서 듣고 말할 수 있다 ----------
 -- (게임은 private 채널 'dami-room-<무작위 채널 이름>'을 쓴다. 방 코드로는 채널을 알 수 없다)
+-- 채널 이름 → 내가 그 방 사람인지 (표는 직접 못 읽으므로 확인 전용 함수로)
+create or replace function public.is_room_chan_member(p_topic text) returns boolean
+language sql security definer stable set search_path = public as $$
+  select p_topic like 'dami-room-%' and exists (
+    select 1 from public.room_members m join public.rooms r on r.code = m.room
+    where r.chan = substring(p_topic from 11) and m.user_id = auth.uid());
+$$;
+revoke all on function public.is_room_chan_member(text) from public, anon;
+grant execute on function public.is_room_chan_member(text) to authenticated;
+
 drop policy if exists "dami room: 방 사람만 듣기" on realtime.messages;
 drop policy if exists "dami room: 방 사람만 말하기" on realtime.messages;
 create policy "dami room: 방 사람만 듣기" on realtime.messages for select to authenticated
-  using (realtime.topic() like 'dami-room-%' and exists (
-    select 1 from public.room_members m join public.rooms r on r.code = m.room
-    where r.chan = substring(realtime.topic() from 11) and m.user_id = auth.uid()));
+  using (public.is_room_chan_member(realtime.topic()));
 create policy "dami room: 방 사람만 말하기" on realtime.messages for insert to authenticated
-  with check (realtime.topic() like 'dami-room-%' and exists (
-    select 1 from public.room_members m join public.rooms r on r.code = m.room
-    where r.chan = substring(realtime.topic() from 11) and m.user_id = auth.uid()));
+  with check (public.is_room_chan_member(realtime.topic()));
