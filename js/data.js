@@ -38,6 +38,8 @@ const NPCS={
     idle:['나도 강아지 키우고 싶다~','담이야 하이파이브!','엄마가 강아지는 크면 키우재. 나 이제 8살인데!','바닷가에서 조개 주웠어! 보여 줄까? …아 집에 두고 왔다.','담이 빵야! 하는 거 또 보고 싶어!','오늘 학교에서 강아지 그림 그렸어. 담이 그렸다!']},
   coach:{name:'코치 은비',home:'coach',P:{skin:'#efc49a',hair:'#5a3a2a',style:'pony',top:'#7cc36a',topD:'#68ad58',bottom:'#3b3b4a'},
     idle:['훈련은 짧게, 칭찬은 크게!','실패해도 괜찮아요. 담이는 매일 늘고 있어요.','축제 장기자랑, 기대돼요!','간식 먹은 직후가 훈련 효과가 제일 좋아요.','어질리티 코스 해 볼래요? 담이 은근 날쌔던데요!']},
+  vet:{name:'수의사 서연',home:'vet',P:{skin:'#f8dcc2',hair:'#2b2230',hairL:'#4a4050',style:'pony',top:'#ffffff',topD:'#e4e8ec',apron:'#8fd0c4',bottom:'#4a5a6a',glasses:'#555'},
+    idle:['콩닥 동물병원이에요. 담이 오늘 컨디션 좋아 보이네요!','산책길에 떨어진 음식은 강아지 배탈의 원인 1위예요.','말티푸는 눈물 자국 관리도 해 주세요~','예방접종 수첩 잘 챙기고 계시죠?','담이 발바닥 젤리 말랑말랑하네요. 건강해요!']},
   mayor:{name:'이장님',home:'mayor',P:{skin:'#efc49a',hair:'#9a9a9a',hairL:'#c8c8c8',style:'short',top:'#8a6a4a',topD:'#74583c',bottom:'#4a4a4a',glasses:'#333333'},
     idle:['마을 강아지 축제 준비로 바쁘구먼.','담이도 축제에 나오는 거지?','허허, 오늘 날씨 좋구먼.','산 정상 전망대에서 보면 우리 마을이 손바닥만 해.','캠핑장 모닥불 앞에서 고구마 구워 먹던 시절이 그립구먼.']}
 };
@@ -131,7 +133,7 @@ const QDEF=[
     return{item:'빵 바구니',to,place:pl,title:`${PLACES[pl].name}에 빵 배달`,ask:[`${PLACES[pl].name}에 있는 ${to}께 빵 바구니 좀 전해 줄래?`,'담이가 냄새 맡고 먹으면 안 된다~ 하하!'],thanks:['배달 고마워! 손님이 아주 좋아했대.','담이 간식도 두 개 넣었어!'],bonusTreat:2};}},
   {giver:'florist',type:'collect',reward:30,xp:20,mk(){const pl=pick(placesOpen(['park','meadow','mountain','river','beach','camp']));const it={park:'민들레',meadow:'들꽃',mountain:'산딸기',river:'갈대꽃',beach:'예쁜 조개',camp:'솔방울'}[pl];
     return{item:it,n:3,place:pl,title:`${it} 3개 모으기`,ask:[`${PLACES[pl].name}에 ${it}이(가) 한창이래요.`,'꽃다발 장식에 쓰고 싶은데 3개만 모아다 줄래요?'],thanks:['와, 너무 예쁘다! 고마워요.','담이한테 어울릴 꽃핀도 같이 줄게요!'],acc:'flower'};}},
-  {giver:'kid',type:'play',reward:25,xp:20,mk(){return{n:2,place:null,title:'친구 강아지랑 2번 어울리기',ask:['담이도 친구가 많으면 좋겠다!','산책하다 만나는 강아지들이랑 2번 어울려 줘! (놀기·간식·사진 뭐든!)'],thanks:['우와, 담이 친구 부자다!','내 용돈 코인 줄게!']};}},
+  {giver:'kid',type:'play',reward:25,xp:20,mk(){return{n:2,place:null,title:'친구 강아지랑 2번 어울리기',ask:['담이도 친구가 많으면 좋겠다!','산책하다 만나는 강아지들이랑 2번 어울려 줘! (놀기·간식·사진 뭐든!)'],thanks:['우와, 담이 친구 부자다!','내 용돈 뼈다귀 줄게!']};}},
   {giver:'coach',type:'trick',reward:30,xp:25,mk(){const ok=Object.keys(TRICKS).filter(k=>TRICKS[k].lv<=affLv());const tr=pick(ok);
     return{trick:tr,place:'town',title:`'${TRICKS[tr].name}' 보여주기`,ask:[`담이가 '${TRICKS[tr].name}' 하는 걸 보고 싶어요!`,'제 앞에서 담이에게 다가가 [행동]을 누르고 명령해 보세요. 실패해도 연습이에요!'],thanks:['잘했어요! 축제 장기자랑 기대할게요.','훈련 수당이에요~']};}},
   {giver:'mayor',type:'photo',reward:35,xp:25,mk(){const pl=pick(placesOpen(['park','summit','river','beach','meadow','mountain','camp']));

@@ -2,7 +2,7 @@
 // ===== 저장 데이터 · 하루 일정 · 지역(집/마을/산책길) 생성 =====
 // 멀티플레이 대비: SV = 이 플레이어 저장본(JSON 하나). 나중에 Supabase에 그대로 올릴 수 있게 순수 데이터만 둔다.
 const store={get(k,d){try{const v=localStorage.getItem('dami3_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('dami3_'+k,JSON.stringify(v));}catch(e){}}};
-const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false};
+const DEF={v:3,day:1,coins:50,kibble:6,treats:5,acc:{},eq:null,xp:0,lv:1,aff:0,alv:1,skill:{sit:.5,paw:.3,down:.25,bang:.2},friends:{},treasure:{},stickers:0,tips:{},muted:false,today:null,festival:false,sick:0,bathN:0};
 let SV=JSON.parse(JSON.stringify(DEF));
 function loadSave(cloud){const s=cloud||store.get(saveKey(),null);SV=Object.assign(JSON.parse(JSON.stringify(DEF)),s||{});muted=SV.muted;}
 function save(force){store.set(saveKey(),SV);cloudSave(force);}
@@ -38,6 +38,7 @@ const ROOMS={
   petshop:{W:14,H:10,wall:'#dcecf8',wall2:'#cadff0',floor:['#c8a070','#b48c5c'],door:6,npc:['shop',7,4.2],furn:[['counter',7,5.6],['shelf',2.6,3.6,2],['shelf',11.4,3.6,2],['toybox',11.6,8.4]],walls:[['window',6.6,0.9]]},
   kid:{W:14,H:10,wall:'#fff1c8',wall2:'#f6e2a8',floor:['#c99a68','#b4855a'],door:6,npc:['kid',6,6.4],furn:[['bed',2.6,4.8],['toybox',10.4,4.3],['table',8.6,7.6],['plant',12.4,8.6]],walls:[['window',6.6,0.9],['painting',11,1]]},
   coach:{W:14,H:10,wall:'#e6f0d8',wall2:'#d6e4c4',floor:['#a8c890','#98b880'],door:6,npc:['coach',10.6,5],furn:[['cone',3,6,0,null,false],['cone',5,6,0,null,false],['cone',7,6,0,null,false],['shelf',2.6,3.6,2],['board',11,3.6]],walls:[['window',6.6,0.9]]},
+  vet:{W:14,H:10,wall:'#e4f4f0',wall2:'#d0ebe4',floor:['#d8e6ea','#c4d6dc'],door:6,npc:['vet',7,4.2],furn:[['counter',7,5.6],['shelf',2.6,3.6,2],['table',11,7.6],['plant',1.6,8.6],['plant',12.4,8.6]],walls:[['window',3.4,0.9],['clock',10.6,1.2],['painting',7,1]]},
   mayor:{W:14,H:10,wall:'#ece0d0',wall2:'#dccfbb',floor:['#a8784a','#946a40'],door:6,npc:['mayor',7,4.2],furn:[['desk',7,5.6],['shelf',2.6,3.6,0],['shelf',11.4,3.6,0],['plant',12.4,8.6]],walls:[['painting',7,1],['clock',10.6,1.2]]}
 };
 function genRoom(id){
@@ -86,8 +87,8 @@ function makeThumb(A){const k=.25;return mk(A.PW*k,A.PH*k,g=>{g.imageSmoothingEn
 // ---------- 마을 ----------
 const TOWN_HOUSES=[
   {id:'home',tx:7,ty:14,roof:0},{id:'grandma',tx:15,ty:14,roof:3},{id:'bakery',tx:30,ty:14,roof:1},{id:'florist',tx:38,ty:14,roof:2},
-  {id:'petshop',tx:7,ty:26,roof:1},{id:'kid',tx:15,ty:26,roof:0},{id:'coach',tx:30,ty:26,roof:2},{id:'mayor',tx:38,ty:26,roof:3}];
-const HOUSE_NAME={home:'우리 집',grandma:'복순 할머니 댁',bakery:'몽글 빵집',florist:'하린 꽃집',petshop:'멍멍 펫샵',kid:'도윤이네',coach:'은비 훈련소',mayor:'이장님 댁'};
+  {id:'petshop',tx:7,ty:26,roof:1},{id:'kid',tx:15,ty:26,roof:0},{id:'coach',tx:30,ty:26,roof:2},{id:'mayor',tx:38,ty:26,roof:3},{id:'vet',tx:11,ty:8,roof:2}];
+const HOUSE_NAME={home:'우리 집',grandma:'복순 할머니 댁',bakery:'몽글 빵집',florist:'하린 꽃집',petshop:'멍멍 펫샵',kid:'도윤이네',coach:'은비 훈련소',mayor:'이장님 댁',vet:'콩닥 동물병원'};
 const TOWN_TH={path:{type:'stone',b:'#dcd2bf',m:'#bfb39d',l:'#ece4d6',e:'#9b8f7b'}};
 let TOWN_CACHE={};
 function genTown(){
@@ -108,6 +109,7 @@ function genTown(){
       for(let j=-3;j<=0;j++)for(let i=-2;i<=3;i++){const x=h.tx+i,y=h.ty+j;if(x>=0&&y>=0)occ[y*A.W+x]=1;}
       for(let j=-2;j<=0;j++)for(let i=-1;i<=2;i++)setSolid(A,h.tx+i,h.ty+j);
       A.doors.push({id:h.id,name:HOUSE_NAME[h.id],x:o.x,y:o.y+6});
+      if(h.id==='vet')A.objs.push({kind:'vetsign',x:o.x+20,y:o.y+1,img:mk(14,22,g=>{rc(g,6,10,2,12,'#6a5040');rc(g,0,0,14,12,'#4a2e1e');rc(g,1,1,12,10,'#ffffff');rc(g,5,2,4,8,'#e0484f');rc(g,3,4,8,4,'#e0484f');})});
       A.objs.push({kind:'mailbox',x:h.tx*T+60,y:h.ty*T+30,img:spr('mailbox',()=>buildObj('mailbox'))});occ[(h.ty+1)*A.W+h.tx+3]=1;setSolid(A,h.tx+3,h.ty+1);}
     A.objs.push({kind:'fountain',x:22.5*T,y:23.5*T+8,img:buildObj('fountain'),anim:'fountain'});for(let j=22;j<=24;j++)for(let i=21;i<=23;i++){setSolid(A,i,j);occ[j*A.W+i]=1;}
     A.objs.push({kind:'board',x:26.6*T,y:20.6*T,img:buildFurn('board'),use:'board'});setSolid(A,26,20);setSolid(A,27,20);occ[20*A.W+26]=occ[20*A.W+27]=1;
