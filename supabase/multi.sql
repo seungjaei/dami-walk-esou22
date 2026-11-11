@@ -72,6 +72,14 @@ create table if not exists public.room_invites (
   primary key (room, to_user)
 );
 -- 직접 접근은 전부 막고(정책 없음 = 아무도 못 읽고 못 씀) 함수로만
+-- 친구 요청 기록(코드 마구 넣어 보기 막기: 1시간에 30번까지)
+create table if not exists public.friend_req_log (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  at      timestamptz not null default now()
+);
+create index if not exists friend_req_log_idx on public.friend_req_log(user_id, at);
+alter table public.friend_req_log enable row level security;
+revoke all on public.friend_req_log from anon, authenticated;
 alter table public.friendships  enable row level security;
 alter table public.rooms        enable row level security;
 alter table public.room_members enable row level security;
@@ -92,6 +100,9 @@ declare me uuid := auth.uid(); other uuid; f public.friendships;
 begin
   if me is null then raise exception '로그인이 필요해요'; end if;
   if p_code !~ '^[0-9]{6}$' then return 'bad'; end if;
+  if (select count(*) from public.friend_req_log where user_id = me and at > now() - interval '1 hour') >= 30 then return 'limit'; end if;
+  insert into public.friend_req_log (user_id) values (me);
+  delete from public.friend_req_log where at < now() - interval '1 day';
   select id into other from public.profiles where friend_code = p_code;
   if other is null then return 'none'; end if;
   if other = me then return 'self'; end if;
@@ -126,10 +137,11 @@ language sql security definer set search_path = public as $$
 $$;
 
 -- 친구창 목록: kind = friend(친구) / in(받은 요청) / out(보낸 요청). 보이는 건 가입 이름과 친구 코드뿐.
+-- 내가 보낸 요청(out)은 상대가 수락하기 전까지 이름을 보여 주지 않는다(코드만) → 코드로 남의 이름 알아내기 불가
 create or replace function public.friend_list() returns table (kind text, id bigint, name text, code text)
 language sql security definer stable set search_path = public as $$
   select case when f.status = 'accepted' then 'friend' when f.addressee = auth.uid() then 'in' else 'out' end,
-         f.id, p.name, p.friend_code
+         f.id, case when f.status = 'accepted' or f.addressee = auth.uid() then p.name end, p.friend_code
   from public.friendships f
   join public.profiles p on p.id = case when f.requester = auth.uid() then f.addressee else f.requester end
   where f.requester = auth.uid() or f.addressee = auth.uid()

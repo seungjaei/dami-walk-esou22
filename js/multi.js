@@ -120,7 +120,7 @@ function mpNickForm(kind,code){
 async function mpFriends(){MPV.screen='friends';
   const inp=h('input',{type:'text',inputmode:'numeric',maxlength:'6',placeholder:'친구 코드 6자리',autocomplete:'off'}),list=h('div',{},'불러오는 중…');
   const send=async()=>{const c=inp.value.trim();if(!/^[0-9]{6}$/.test(c)){mpMsg('친구 코드는 숫자 6자리예요');return;}
-    try{const r=await rpc('friend_request',{p_code:c});const M={sent:['요청을 보냈어요! 친구가 수락하면 친구가 돼요',1],accepted:['친구가 됐어요! 🎉',1],already:['이미 친구예요'],pending:['이미 요청을 보냈어요. 수락을 기다려요'],self:['내 코드예요'],none:['그 코드의 친구를 찾지 못했어요'],limit:['보낸 요청이 너무 많아요. 조금 기다려 주세요'],full:['친구는 50명까지예요'],bad:['친구 코드는 숫자 6자리예요']};
+    try{const r=await rpc('friend_request',{p_code:c});const M={sent:['요청을 보냈어요! 친구가 수락하면 친구가 돼요',1],accepted:['친구가 됐어요! 🎉',1],already:['이미 친구예요'],pending:['이미 요청을 보냈어요. 수락을 기다려요'],self:['내 코드예요'],none:['그 코드의 친구를 찾지 못했어요'],limit:['요청을 너무 많이 보냈어요. 1시간 뒤에 다시 해 주세요'],full:['친구는 50명까지예요'],bad:['친구 코드는 숫자 6자리예요']};
       const [s,ok]=M[r]||[r];inp.value='';await draw();mpMsg(s,ok);}catch(e){mpMsg(errMsg(e));}};
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')send();});
   const draw=async()=>{try{const L=await rpc('friend_list');MPV.friends=L.filter(f=>f.kind==='friend');
@@ -128,7 +128,7 @@ async function mpFriends(){MPV.screen='friends';
     list.replaceChildren(
       ...(I.length?[h('h3',{},`📮 받은 요청 (${I.length})`),...I.map(f=>h('div',{cls:'item'},h('span',{},`${f.name} (${f.code})`),h('span',{cls:'act'},btn('수락',async()=>{await rpc('friend_respond',{p_id:f.id,p_accept:true}).catch(()=>{});draw();},'go'),btn('거절',async()=>{await rpc('friend_respond',{p_id:f.id,p_accept:false}).catch(()=>{});draw();},'sub'))))]:[]),
       h('h3',{},`🐾 내 친구 (${F.length})`),...(F.length?F.map(f=>h('div',{cls:'item'},h('span',{},`${f.name} (${f.code})`),h('span',{cls:'act'},btn('끊기',()=>mpConfirm(`${f.name}님과 친구를 끊을까요?`,async()=>{await rpc('friend_remove',{p_id:f.id}).catch(()=>{});draw();}),'sub')))):[h('div',{cls:'sub'},'친구 코드로 친구를 추가해 보세요')]),
-      ...(O.length?[h('h3',{},'⏳ 보낸 요청'),...O.map(f=>h('div',{cls:'item'},h('span',{},`${f.name} (${f.code}) · 수락 기다리는 중`),h('span',{cls:'act'},btn('취소',async()=>{await rpc('friend_remove',{p_id:f.id}).catch(()=>{});draw();},'sub'))))]:[]));}
+      ...(O.length?[h('h3',{},'⏳ 보낸 요청'),...O.map(f=>h('div',{cls:'item'},h('span',{},`코드 ${f.code} · 수락 기다리는 중`),h('span',{cls:'act'},btn('취소',async()=>{await rpc('friend_remove',{p_id:f.id}).catch(()=>{});draw();},'sub'))))]:[]));}
     catch(e){list.textContent=errMsg(e);}};
   mpScreen('👥 친구창',[h('div',{cls:'card'},h('label',{cls:'lbl'},'친구 추가 (친구의 6자리 코드)',inp),btn('친구 요청 보내기',send,'go')),list],()=>mpHome());
   await draw();}
