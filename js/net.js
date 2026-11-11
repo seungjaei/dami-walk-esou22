@@ -4,7 +4,7 @@
 // - 주고받는 것: 별명(직접 정함, 8자), 지역, 위치·방향, 담이 자세·옷. 이메일·이름·생년월일·계정 id는 보내지 않는다.
 // - 말풍선은 정해진 문장 번호만 보낸다(자유 채팅 없음 → 욕설·개인정보 걱정 없음).
 // - 뼈다귀·레벨·일기 저장은 지금처럼 각자 기기/클라우드에 둔다(서로 못 바꿈).
-const NET={room:null,ch:null,peers:{},me:null,status:'off',sendT:0,beatT:0,sig:'',joinT:0,members:[],host:false,hostId:null,sleeping:false,clkT:0};
+const NET={room:null,ch:null,peers:{},blocked:new Set(),okIds:new Set(),newRoom:false,me:null,status:'off',sendT:0,beatT:0,sig:'',joinT:0,members:[],host:false,hostId:null,sleeping:false,clkT:0};
 const NET_HZ=6,NET_BEAT=2,NET_STALE=12;
 const PHRASES=['안녕하세요!','같이 걸어요~','담이 귀엽죠?','저쪽 가 볼까요?','고마워요!','또 만나요!'];
 const PEER_TOPS=[['#9fd6a8','#86c491'],['#f2b8a0','#e09f86'],['#a8c8f0','#8fb2de'],['#f2d48a','#ddbd6f'],['#e8a8c8','#d290b2']];
@@ -21,7 +21,7 @@ async function netJoin(code,nick){
   if(!ROOM_RE.test(code)){toast('방 코드는 숫자 6자리예요');return false;}
   await netLeave(true);
   NET.me={id:Math.random().toString(36).slice(2,12),nick:cleanNick(nick)||'산책친구'};
-  NET.room=code;NET.status='connecting';NET.peers={};NET.sig='';NET.joinT=Date.now();NET.members=[];NET.sleeping=false;
+  NET.room=code;NET.status='connecting';NET.peers={};NET.sig='';NET.joinT=Date.now();NET.members=[];NET.sleeping=false;NET.blocked=new Set();NET.okIds=new Set();
   const ch=AUTH.client.channel('dami-room-'+code,{config:{broadcast:{self:false},presence:{key:NET.me.id}}});
   ch.on('broadcast',{event:'st'},({payload})=>netOnState(payload))
     .on('broadcast',{event:'say'},({payload})=>netOnSay(payload))
@@ -45,20 +45,29 @@ async function netLeave(silent){
 }
 
 // ---------- 받기 ----------
-function netPeer(id){if(typeof id!=='string'||!/^[a-z0-9]{6,12}$/.test(id)||id===(NET.me&&NET.me.id))return null;
+function netPeer(id,sync){if(!sync&&mpRoom()&&mpRoom().lock&&!NET.okIds.has(id))return null;if(typeof id!=='string'||!/^[a-z0-9]{6,12}$/.test(id)||id===(NET.me&&NET.me.id)||NET.blocked.has(id))return null;
   let p=NET.peers[id];if(!p){const v=PEER_TOPS[strSeed(id)%PEER_TOPS.length];p=NET.peers[id]={id,nick:'친구',v,P:Object.assign({},GIRL,{top:v[0],topD:v[1]}),seen:0,anim:0,danim:0,fresh:true};}
   return p;}
 function netOnSync(){if(!NET.ch)return;const S=NET.ch.presenceState(),alive=new Set();
-  for(const [id,arr] of Object.entries(S)){const m=arr&&arr[0];const p=netPeer(id);if(!p)continue;alive.add(id);
+  const R=mpRoom(),locked=!!(R&&R.lock);
+  // 잠긴 방(DAY 2부터): 처음 함께 시작한 친구(명단)만 보이고, 날짜·잠·인원에도 셈하지 않는다
+  for(const [id,arr] of Object.entries(S)){const m=arr&&arr[0];if(!NET.me||id===NET.me.id)continue;
+    if(locked&&!(R.roster||[]).includes(pidOk(m&&m.p))){NET.blocked.add(id);delete NET.peers[id];continue;}
+    NET.blocked.delete(id);const p=netPeer(id,true);if(!p)continue;alive.add(id);
     const nk=cleanNick(m&&m.n)||'친구';if(p.fresh&&!p.joined){p.joined=true;if(Date.now()-NET.joinT>1500)toast(`${nk}님이 들어왔어요`);}p.nick=nk;p.seen=Math.max(p.seen,performance.now()/1000);}
   for(const id of Object.keys(NET.peers))if(!alive.has(id)){const p=NET.peers[id];if(p.joined)toast(`${p.nick}님이 나갔어요`);delete NET.peers[id];}
-  NET.sig='';
+  NET.okIds=alive;NET.sig='';
   // 같이 하기: 먼저 들어온 4명까지만, 가장 먼저 들어온 사람이 시계 담당(호스트)
-  NET.members=Object.entries(S).map(([id,a])=>{const m=(a&&a[0])||{};return{id,n:cleanNick(m.n)||'친구',t:typeof m.t==='number'&&m.t>Date.now()-864e5&&m.t<Date.now()+6e4?m.t:9e15,d:Math.max(1,Math.min(9999,m.d|0)),z:m.z?1:0};}).sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1));
+  NET.members=Object.entries(S).map(([id,a])=>{const m=(a&&a[0])||{};return{id,p:pidOk(m.p),n:cleanNick(m.n)||'친구',t:typeof m.t==='number'&&m.t>Date.now()-864e5&&m.t<Date.now()+6e4?m.t:9e15,d:Math.max(1,Math.min(9999,m.d|0)),z:m.z?1:0};}).sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1));
   if(!NET.me||!NET.members.some(m=>m.id===NET.me.id))return;
+  NET.members=NET.members.filter(m=>!NET.blocked.has(m.id));
+  // 처음 보는 방인데 이미 DAY 2 이상으로 진행 중이면 → 처음 같이 시작한 친구만 들어올 수 있어요
+  if(NET.newRoom&&NET.members.some(m=>m.id!==NET.me.id&&m.d>1)){TITLE_MSG=`친구방 ${NET.room} 은 이미 시작됐어요 · 처음 같이 시작한 친구만 들어갈 수 있어요`;delete SV.mp[NET.room];mpLeave();return;}
+  if(NET.newRoom&&Date.now()-NET.joinT>3000)NET.newRoom=false; // 함께 시작한 친구로 받아들여짐
   const idx=NET.members.findIndex(m=>m.id===NET.me.id);
   if(idx>=MP_MAX&&Date.now()-NET.joinT<5000){TITLE_MSG=`친구방 ${NET.room} 은 꽉 찼어요 (최대 ${MP_MAX}명)`;mpLeave();return;}
   NET.members=NET.members.slice(0,MP_MAX);NET.hostId=NET.members[0].id;NET.host=NET.hostId===NET.me.id;
+  if(R&&!R.lock){const r=new Set(R.roster||[]);for(const m of NET.members)if(m.p&&r.size<MP_MAX)r.add(m.p);R.roster=[...r];}
   mpCheck();}
 function netOnState(m){if(!m)return;const p=netPeer(m.i);if(!p)return;
   if(![m.x,m.y,m.X,m.Y].every(numOk))return;
@@ -110,7 +119,8 @@ function openRoomMenu(){SFX.sel();
   const st0=NET.status==='on'?`${ms.length}/${MP_MAX}명`:'연결 중…';
   openMenu({title:`친구방 ${SV.room} · ${st0}`,items:ms.map(m=>{const me=NET.me&&m.id===NET.me.id,p=NET.peers[m.id];
       return{label:`${me?'나 ('+m.n+')':m.n}${NET.hostId===m.id?' ⏰':''} — ${me?'':m.z?'잠들었어요 💤':p&&peerHere(p)?'여기 있어요!':p&&p.a?AREA_NAME(p.a):'…'}`,dis:true,fn:()=>{}};})
-    .concat([{label:'말풍선 보내기',fn:()=>openMenu({title:'말풍선',items:PHRASES.map((s,i)=>({label:s,fn:()=>{closeOv();netSay(i);}})).concat([{label:'닫기',fn:closeOv}])})},
+    .concat([{label:mpRoom()&&mpRoom().lock?`🔒 처음 함께한 ${(mpRoom().roster||[]).length}명만 들어올 수 있어요`:'🔓 DAY 1 동안만 새 친구가 들어올 수 있어요',dis:true,fn:()=>{}},
+      {label:'말풍선 보내기',fn:()=>openMenu({title:'말풍선',items:PHRASES.map((s,i)=>({label:s,fn:()=>{closeOv();netSay(i);}})).concat([{label:'닫기',fn:closeOv}])})},
       {label:'혼자 하기로 돌아가기',fn:()=>{closeOv();mpLeave();}},{label:'닫기',fn:closeOv}])});}
 
 // ---------- 같이 하기 입력 화면 (휴대폰 키보드용 HTML 입력칸) ----------
@@ -137,23 +147,30 @@ function hideRoomForm(){document.getElementById('room').style.display='none';if(
 const MP_MAX=4;
 let TITLE_MSG='';
 const isMP=()=>!!SV.room;
+const pidOk=v=>typeof v==='string'&&/^[a-z0-9]{8,14}$/.test(v)?v:'';
+const mpRoom=()=>SV.room&&SV.mp?SV.mp[SV.room]:null;
+// 방 기록: 날짜·오늘 + 명단(처음 함께 시작한 친구) + 잠김(DAY 2부터). 저장은 각자 기기·클라우드에.
+function mpSaveRoom(){if(!SV.room)return;SV.mp=SV.mp||{};const o=SV.mp[SV.room]||{};
+  SV.mp[SV.room]=Object.assign(o,{day:SV.day,today:SV.today,lock:!!o.lock||SV.day>1});}
 function mpEnter(code,nick){
   if(SV.solo)mpRestoreSolo();
   SV.mp=SV.mp||{};SV.solo={day:SV.day,today:SV.today};SV.room=code;SV.roomNick=nick;
-  const r=SV.mp[code];if(r&&r.today){SV.day=r.day;SV.today=r.today;}else{SV.day=1;newToday();SV.mp[code]={day:1,today:SV.today};}
+  if(!pidOk(SV.pid))SV.pid=Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8);
+  const r=SV.mp[code];NET.newRoom=!(r&&r.today);
+  if(!NET.newRoom){SV.day=r.day;SV.today=r.today;}else{SV.day=1;newToday();SV.mp[code]={day:1,today:SV.today,roster:[SV.pid],lock:false};}
   TITLE_MSG='';save(true);startGame(false);netJoin(code,nick);}
 function mpRestoreSolo(){if(!SV.solo)return;
-  if(SV.room){SV.mp=SV.mp||{};SV.mp[SV.room]={day:SV.day,today:SV.today};}
+  if(SV.room&&SV.mp&&SV.mp[SV.room])mpSaveRoom();
   SV.day=SV.solo.day;SV.today=SV.solo.today;delete SV.solo;SV.room=null;}
 function mpLeave(){netLeave(true);mpRestoreSolo();save(true);if(G)G.ov=null;scene='title';sceneT=0;musicOn=false;showTouch(false);}
-async function mpTrack(){if(!NET.ch||!NET.me)return;try{await NET.ch.track({n:NET.me.nick,t:NET.joinT,d:SV.day,z:NET.sleeping?1:0});}catch(e){}}
+async function mpTrack(){if(!NET.ch||!NET.me)return;try{await NET.ch.track({n:NET.me.nick,p:SV.pid,t:NET.joinT,d:SV.day,z:NET.sleeping?1:0});}catch(e){}}
 function mpOnClock(m){if(!isMP()||!m||m.i!==NET.hostId||NET.host||!numOk(m.c)||m.c<0||m.c>30*60||(Math.abs(m.c-SV.today.clock)>120&&Date.now()-NET.joinT>15000))return;
   if((m.d|0)===SV.day&&!NET.sleeping&&scene==='game'&&Math.abs(m.c-SV.today.clock)>1.5)SV.today.clock=m.c;}
-function mpCheck(){if(!isMP()||!NET.members.length)return;const ms=NET.members,maxD=Math.min(SV.day+30,Math.max(...ms.map(m=>m.d)));
+function mpCheck(){if(!isMP()||!NET.members.length)return;if(NET.newRoom&&Date.now()-NET.joinT>3000&&NET.members.every(m=>m.d<=1))NET.newRoom=false;const ms=NET.members,maxD=Math.min(SV.day+30,Math.max(...ms.map(m=>m.d)));
   if(maxD>SV.day){if(NET.sleeping&&maxD===SV.day+1&&scene==='game'){mpEndDay();return;}if(scene!=='diary')mpJump(maxD);return;}
   if(NET.sleeping&&scene==='game'&&ms.every(m=>m.d===SV.day&&m.z))mpEndDay();}
-function mpEndDay(){NET.sleeping=false;if(G)G.ov=null;endDay();SV.mp[SV.room]={day:SV.day,today:SV.today};mpTrack();}
-function mpJump(d){SV.day=d;newToday();SV.mp[SV.room]={day:SV.day,today:SV.today};save(true);NET.sleeping=false;
+function mpEndDay(){NET.sleeping=false;if(G)G.ov=null;endDay();NET.newRoom=false;mpSaveRoom();save(true);mpTrack();}
+function mpJump(d){SV.day=d;newToday();NET.newRoom=false;mpSaveRoom();save(true);NET.sleeping=false;
   if(scene==='game'){G.ov=null;enterArea('home',{wake:true});toast(`친구들과 날짜를 맞췄어요 · DAY ${d}`);}mpTrack();}
 function mpSleep(){if(!netOn()){endDay();return;}NET.sleeping=true;G.ov={type:'sleepwait'};G.dami.state='sleep';G.dami.t=999;mpTrack();mpCheck();}
 function mpWakeUp(){NET.sleeping=false;G.ov=null;G.dami.state='idle';mpTrack();}
