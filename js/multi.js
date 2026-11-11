@@ -60,13 +60,15 @@ async function mpPlay(code){
   catch(e){mpMsg(errMsg(e));return;}
   const me=(st.members||[]).find(m=>m.me);if(!me){mpMsg('이 방의 사람이 아니에요');return;}
   if(!isMP()){try{store.set(saveKey(),SV);await cloudSave(true);}catch(e){}SOLO_SV=SV;}
-  MP.on=true;MP.code=code;MP.nick=me.nick;MP.look=lookClean(me.look);MP.size=(st.members||[]).length;
+  if(typeof st.chan!=='string'||!/^[0-9a-f]{64}$/.test(st.chan)){mpMsg('서버 설정(multi.sql)을 다시 실행해 주세요');return;}
+  MP.on=true;MP.code=code;MP.chan=st.chan;MP.nick=me.nick;MP.look=lookClean(me.look);MP.size=(st.members||[]).length;
+  MP.nicks=(st.members||[]).filter(m=>!m.me).map(m=>m.nick);   // 방 명단(서버) — 이 별명이 아닌 접속은 무시
   const local=store.get(mpKey(),null);
   let data=remote&&typeof remote==='object'?remote:null;if(local&&(!data||(local._t||0)>(data._t||0)))data=local;
   setPersona(MP.look);mpHide();
   if(data){SV=Object.assign(JSON.parse(JSON.stringify(DEF)),data);SV.muted=SOLO_SV?SOLO_SV.muted:false;startGame(false);}
   else{SV=JSON.parse(JSON.stringify(DEF));SV.muted=SOLO_SV?SOLO_SV.muted:false;startGame(true);}
-  muted=SV.muted;save(true);netJoin(code,MP.nick);}
+  muted=SV.muted;save(true);netJoin(MP.chan,MP.nick);}
 async function mpExit(silent){
   if(!isMP())return;try{SV._t=Date.now();store.set(mpKey(),SV);await mpCloudSave(true);}catch(e){}
   await netLeave();setPersona(null);MP.on=false;MP.code=null;

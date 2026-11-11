@@ -1,6 +1,7 @@
 -- ===== 담이 산책 일기: 멀티모드(같이 하기) 설정 SQL =====
 -- schema.sql을 먼저 실행한 프로젝트에서, Supabase 대시보드 → SQL Editor → New query → 전체 붙여 넣고 Run.
 -- 여러 번 실행해도 괜찮아요(이미 있는 건 건너뜀).
+-- ⚠️ 실행 후 꼭: Project Settings → Realtime → 'Allow public access' 끄기 (방 채널을 비공개로만 쓰게)
 -- 원칙: 게임(브라우저)은 표를 직접 읽거나 쓰지 못하고, 아래 '함수(RPC)'로만 일한다. 함수가 규칙을 검사한다.
 
 -- ---------- 0) 프로필: 친구 코드(6자리 숫자) ----------
@@ -80,6 +81,12 @@ create table if not exists public.friend_req_log (
 create index if not exists friend_req_log_idx on public.friend_req_log(user_id, at);
 alter table public.friend_req_log enable row level security;
 revoke all on public.friend_req_log from anon, authenticated;
+-- 방마다 추측할 수 없는 채널 이름(64자리 무작위). 방 사람에게만 room_state로 알려 준다.
+alter table public.rooms add column if not exists chan text;
+update public.rooms set chan = replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '') where chan is null;
+alter table public.rooms alter column chan set default replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
+alter table public.rooms alter column chan set not null;
+create unique index if not exists rooms_chan_key on public.rooms(chan);
 alter table public.friendships  enable row level security;
 alter table public.rooms        enable row level security;
 alter table public.room_members enable row level security;
@@ -100,6 +107,7 @@ declare me uuid := auth.uid(); other uuid; f public.friendships;
 begin
   if me is null then raise exception '로그인이 필요해요'; end if;
   if p_code !~ '^[0-9]{6}$' then return 'bad'; end if;
+  perform pg_advisory_xact_lock(hashtext('friendreq:' || me::text));   -- 같은 사람의 요청은 한 줄로 세워 검사(동시에 여러 번 보내 한도 넘기기 방지)
   if (select count(*) from public.friend_req_log where user_id = me and at > now() - interval '1 hour') >= 30 then return 'limit'; end if;
   insert into public.friend_req_log (user_id) values (me);
   delete from public.friend_req_log where at < now() - interval '1 day';
@@ -145,7 +153,7 @@ language sql security definer stable set search_path = public as $$
   from public.friendships f
   join public.profiles p on p.id = case when f.requester = auth.uid() then f.addressee else f.requester end
   where f.requester = auth.uid() or f.addressee = auth.uid()
-  order by 1, p.name;
+  order by 1, case when f.status = 'accepted' or f.addressee = auth.uid() then p.name end nulls last, f.id;
 $$;
 
 create or replace function public.is_friend(a uuid, b uuid) returns boolean
@@ -246,7 +254,7 @@ $$;
 create or replace function public.room_state(p_room text) returns json
 language sql security definer stable set search_path = public as $$
   select case when not exists (select 1 from public.room_members where room = p_room and user_id = auth.uid()) then null
-  else (select json_build_object('code', r.code, 'status', r.status,
+  else (select json_build_object('code', r.code, 'status', r.status, 'chan', r.chan,
       'members', (select json_agg(json_build_object('nick', m.nick, 'look', m.look, 'ready', m.ready,
                      'host', m.user_id = r.host, 'me', m.user_id = auth.uid()) order by m.joined_at)
                   from public.room_members m where m.room = r.code))
@@ -308,14 +316,14 @@ do $$ declare f text; begin
 end $$;
 
 -- ---------- 4) 실시간 채널 잠금: 방 사람만 그 방 채널에서 듣고 말할 수 있다 ----------
--- (게임은 private 채널 'dami-room-<코드>'를 쓴다)
+-- (게임은 private 채널 'dami-room-<무작위 채널 이름>'을 쓴다. 방 코드로는 채널을 알 수 없다)
 drop policy if exists "dami room: 방 사람만 듣기" on realtime.messages;
 drop policy if exists "dami room: 방 사람만 말하기" on realtime.messages;
 create policy "dami room: 방 사람만 듣기" on realtime.messages for select to authenticated
   using (realtime.topic() like 'dami-room-%' and exists (
     select 1 from public.room_members m join public.rooms r on r.code = m.room
-    where m.room = substring(realtime.topic() from 11) and m.user_id = auth.uid()));
+    where r.chan = substring(realtime.topic() from 11) and m.user_id = auth.uid()));
 create policy "dami room: 방 사람만 말하기" on realtime.messages for insert to authenticated
   with check (realtime.topic() like 'dami-room-%' and exists (
     select 1 from public.room_members m join public.rooms r on r.code = m.room
-    where m.room = substring(realtime.topic() from 11) and m.user_id = auth.uid()));
+    where r.chan = substring(realtime.topic() from 11) and m.user_id = auth.uid()));

@@ -3,7 +3,7 @@
 // - 채널 'dami-room-<방코드>'는 private: Supabase가 '그 방 사람(room_members)'만 듣고 말하게 막는다(supabase/multi.sql 4번).
 // - 주고받는 것: 방 별명, 꾸민 모습(정해진 선택지 번호), 강아지 종류·이름, 위치·자세. 계정 id·이름·생년월일은 보내지 않는다.
 // - 말풍선은 정해진 문장 번호만(자유 채팅 없음).
-const NET={ch:null,peers:{},me:null,status:'off',sendT:0,beatT:0,sig:'',joinT:0,members:[],host:false,hostId:null,sleeping:false,clkT:0};
+const NET={ch:null,ok:new Set(),peers:{},me:null,status:'off',sendT:0,beatT:0,sig:'',joinT:0,members:[],host:false,hostId:null,sleeping:false,clkT:0};
 const NET_HZ=6,NET_BEAT=2,NET_STALE=12;
 const PHRASES=['안녕하세요!','같이 걸어요~','강아지 귀엽죠?','저쪽 가 볼까요?','고마워요!','또 만나요!'];
 const netOn=()=>NET.status==='on';
@@ -17,7 +17,7 @@ async function netJoin(code,nick){
   if(!AUTH.client)return false;
   await netLeave();
   NET.me={id:Math.random().toString(36).slice(2,12),nick:cleanNick(nick)||'친구'};
-  NET.status='connecting';NET.peers={};NET.sig='';NET.joinT=Date.now();NET.members=[];NET.sleeping=false;
+  NET.status='connecting';NET.ok=new Set();NET.peers={};NET.sig='';NET.joinT=Date.now();NET.members=[];NET.sleeping=false;
   try{const {data}=await AUTH.client.auth.getSession();if(data&&data.session)await AUTH.client.realtime.setAuth(data.session.access_token);}catch(e){}
   const ch=AUTH.client.channel('dami-room-'+code,{config:{private:true,broadcast:{self:false},presence:{key:NET.me.id}}});
   ch.on('broadcast',{event:'st'},({payload})=>netOnState(payload))
@@ -40,18 +40,21 @@ async function netLeave(){
 }
 
 // ---------- 받기 ----------
-function netPeer(id){if(typeof id!=='string'||!/^[a-z0-9]{6,12}$/.test(id)||id===(NET.me&&NET.me.id))return null;
+function netPeer(id,sync){if(!sync&&!NET.ok.has(id))return null;if(typeof id!=='string'||!/^[a-z0-9]{6,12}$/.test(id)||id===(NET.me&&NET.me.id))return null;
   let p=NET.peers[id];if(!p){p=NET.peers[id]={id,nick:'친구',lk:lookClean(null),P:null,DP:null,seen:0,anim:0,danim:0,fresh:true};}
   return p;}
 function netOnSync(){if(!NET.ch)return;const S=NET.ch.presenceState(),alive=new Set();
-  for(const [id,arr] of Object.entries(S)){const m=arr&&arr[0];const p=netPeer(id);if(!p)continue;alive.add(id);
-    const nk=cleanNick(m&&m.n)||'친구';if(p.fresh&&!p.joined){p.joined=true;if(Date.now()-NET.joinT>1500)toast(`${nk}님이 들어왔어요`);}p.nick=nk;
+  // 서버 방 명단(MP.nicks)에 있는 별명만 받아들이고, 같은 별명이 둘이면 먼저 온 하나만
+  const seenNick=new Set();
+  for(const [id,arr] of Object.entries(S)){const m=arr&&arr[0];const nk=cleanNick(m&&m.n);
+    if(!NET.me||id===NET.me.id||!(MP.nicks||[]).includes(nk)||seenNick.has(nk))continue;seenNick.add(nk);
+    const p=netPeer(id,true);if(!p)continue;alive.add(id);if(p.fresh&&!p.joined){p.joined=true;if(Date.now()-NET.joinT>1500)toast(`${nk}님이 들어왔어요`);}p.nick=nk;
     const lk=lookClean(m&&m.lk),sig=JSON.stringify(lk);if(sig!==p.lkSig){p.lkSig=sig;p.lk=lk;p.P=lookToHuman(lk);p.DP=breedP(lk.breed);p.key='pe'+strSeed(id+sig);}
     p.seen=Math.max(p.seen,performance.now()/1000);}
   for(const id of Object.keys(NET.peers))if(!alive.has(id)){const p=NET.peers[id];if(p.joined)toast(`${p.nick}님이 나갔어요`);delete NET.peers[id];}
-  NET.sig='';
+  NET.ok=alive;NET.sig='';
   // 가장 먼저 들어온 사람이 시계 담당(호스트)
-  NET.members=Object.entries(S).map(([id,a])=>{const m=(a&&a[0])||{};return{id,n:cleanNick(m.n)||'친구',t:typeof m.t==='number'&&m.t>Date.now()-864e5&&m.t<Date.now()+6e4?m.t:9e15,d:Math.max(1,Math.min(9999,m.d|0)),z:m.z?1:0};}).sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1)).slice(0,4);
+  NET.members=Object.entries(S).filter(([id])=>id===NET.me.id||alive.has(id)).map(([id,a])=>{const m=(a&&a[0])||{};return{id,n:cleanNick(m.n)||'친구',t:typeof m.t==='number'&&m.t>Date.now()-864e5&&m.t<Date.now()+6e4?m.t:9e15,d:Math.max(1,Math.min(9999,m.d|0)),z:m.z?1:0};}).sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1)).slice(0,4);
   if(!NET.me||!NET.members.some(m=>m.id===NET.me.id))return;
   NET.hostId=NET.members[0].id;NET.host=NET.hostId===NET.me.id;
   mpCheck();}
