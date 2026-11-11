@@ -25,12 +25,13 @@ async function signUp(name,birth,id,pw){
 async function signOut(){try{await cloudSave(true);}catch(e){}if(AUTH.client)await AUTH.client.auth.signOut();AUTH.user=null;}
 async function cloudLoad(){if(!AUTH.user)return null;const {data,error}=await AUTH.client.from('saves').select('data,updated_at').eq('user_id',AUTH.user.id).maybeSingle();if(error)throw error;return data?data.data:null;}
 async function cloudSave(force){
-  if(!AUTH.user||!AUTH.client)return null;if(AUTH.saving)return null;const now=Date.now();if(!force&&now-AUTH.lastCloud<20000)return;
+  if(!AUTH.user||!AUTH.client)return null;if(typeof isMP==='function'&&isMP())return mpCloudSave(force);   // 멀티는 방 저장으로
+  if(AUTH.saving)return null;const now=Date.now();if(!force&&now-AUTH.lastCloud<20000)return;
   AUTH.saving=true;AUTH.lastCloud=now;
   try{const {error}=await AUTH.client.from('saves').upsert({user_id:AUTH.user.id,data:SV,updated_at:new Date().toISOString()});if(error)throw error;AUTH.cloudOk=true;return true;}
   catch(e){AUTH.cloudOk=false;console.warn('클라우드 저장 실패',e);return false;}finally{AUTH.saving=false;}
 }
-const saveKey=()=>AUTH.user?'save_'+AUTH.user.id:'save';
+const saveKey=()=>typeof isMP==='function'&&isMP()?mpKey():AUTH.user?'save_'+AUTH.user.id:'save';
 const playerName=()=>AUTH.user?(AUTH.user.user_metadata&&AUTH.user.user_metadata.name)||AUTH.user.email.split('@')[0]:'혼자 하기';
 function authErrMsg(e){const m=(e&&e.message)||'';
   if(/Invalid login/i.test(m))return '아이디나 비밀번호가 맞지 않아요.';

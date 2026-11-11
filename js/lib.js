@@ -145,7 +145,7 @@ function renderGround(W,H,PW,PH,M,SD,WT,th,sea){
   // 강변 자전거길 중앙 점선
   return c;}
 function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
-function txt(s,x,y,col='#4a3426',size=11,align='left',font='G11',ol=null){ctx.font=`${size}px ${font}`;ctx.textAlign=align;ctx.textBaseline='top';
+function txt(s,x,y,col='#4a3426',size=11,align='left',font='G11',ol=null){if(MPN&&typeof s==='string'&&s.includes('담이'))s=s.split('담이').join(MPN);ctx.font=`${size}px ${font}`;ctx.textAlign=align;ctx.textBaseline='top';
   if(ol){ctx.fillStyle=ol;for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[1,1]])ctx.fillText(s,x+dx,y+dy);}ctx.fillStyle=col;ctx.fillText(s,x,y);}
 function panel(x,y,w,h,paper='#fbf0d6'){x=Math.round(x);y=Math.round(y);const OL='#4a2e1e',WD='#c98a4f',WL='#e0a868',WD2='#9a6232';
   px(x+2,y,w-4,h,OL);px(x,y+2,w,h-4,OL);px(x+1,y+1,w-2,h-2,OL);

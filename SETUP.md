@@ -40,3 +40,11 @@
 ## 확인
 - 회원가입/로그인 → 게임 → 하루 끝(잠자기)까지 하면 Supabase **Table Editor → saves**에 내 줄이 생겨요
 - 다른 기기에서 같은 계정으로 로그인하면 이어서 할 수 있어요
+
+## 5. 멀티모드(같이 하기) 켜기 — 1번만
+1. **SQL Editor → New query** → `supabase/multi.sql` 전체를 붙여 넣고 **Run** → "Success" 확인
+   - 친구 코드(6자리)·친구 목록·방·대기방·방 저장 표와 규칙이 생겨요. 게임은 표를 직접 못 만지고 정해진 함수로만 일해요.
+   - 실시간 채널도 '그 방 사람만' 듣고 말할 수 있게 잠겨요.
+2. **Project Settings → Realtime** (또는 Realtime → Settings) → **Allow public access** 끄기 → Save
+   - 방 채널을 비공개(private)로만 쓰게 해서, 코드를 아는 외부인이 몰래 엿듣지 못해요.
+3. 확인: 게임 첫 화면 [👫 같이 하기] → 내 친구 코드가 숫자 6자리로 보이면 성공
